@@ -1,0 +1,7 @@
+routine main() is
+    var x : integer is 5
+    var y : integer is 3
+    var z : integer
+    z := x * y + 2
+    print z
+end
