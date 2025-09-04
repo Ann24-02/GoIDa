@@ -1,0 +1,17 @@
+-- defines a function with sizeless array parameter, sums array elements, and prints the total
+
+type Four is array[4] integer
+
+routine sum(arr : array[] integer) : integer is
+    var s : integer is 0
+    for x in arr loop
+        s := s + x
+    end
+    return s
+end
+
+routine main() is
+    var a : Four is [2, 2, 2, 2]
+    var total : integer is sum(a)
+    print total
+end

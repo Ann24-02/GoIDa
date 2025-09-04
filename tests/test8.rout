@@ -1,0 +1,29 @@
+-- uses forward and reverse for-loops, then calculates factorial of 4 and checks the result
+
+routine main() is
+    -- Print 3..6 forward on one line
+    var first : integer is 3
+    var last  : integer is 6
+    for k in first .. last loop
+        print k
+    end
+
+    -- print 5..2 in reverse
+    for j in 2 .. 5 reverse loop
+        print j
+    end
+
+    -- use a condition dependent on a loop result
+    var acc : integer is 1
+    var n   : integer is 4
+    var i   : integer is 1
+    while i <= n loop
+        acc := acc * i
+        i := i + 1
+    end
+    if acc = 24 then
+        print 1
+    else
+        print 0
+    end
+end
