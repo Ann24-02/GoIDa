@@ -1,0 +1,24 @@
+-- evaluates complex boolean expressions with different operator precedences
+
+routine main() is
+    var a : integer is 10
+    var b : integer is 20
+    var c : boolean is true
+    var d : boolean is false
+
+    -- tests operator precedence: relational > AND > OR
+    var result : boolean is a < b and c = d or a <= b
+    if result then
+        print 1
+    else
+        print 0
+    end
+
+    -- tests parentheses changing evaluation order
+    result := c = d or a <= b and a < b
+    if result then
+        print 1
+    else
+        print 0
+    end
+end
