@@ -1,25 +1,25 @@
 public class Token {
     public enum Type {
         // Keywords
-        ROUTINE, IS, END, VAR, TYPE, INTEGER, REAL, BOOLEAN, 
-        ARRAY, RECORD, IF, THEN, ELSE, WHILE, LOOP, FOR, IN, REVERSE, 
-        PRINT, AND, OR, XOR, NOT,
-        
+        ROUTINE, IS, END, VAR, TYPE, INTEGER, REAL, BOOLEAN, STRING,
+        ARRAY, RECORD, IF, THEN, ELSE, WHILE, LOOP, FOR, IN, REVERSE,
+        PRINT, AND, OR, XOR, NOT, RETURN, REF,
+
         // Identifiers
         IDENTIFIER,
-        
+
         // Literals
         INT_LITERAL, REAL_LITERAL, BOOL_LITERAL, STRING_LITERAL,
-        
+
         // Operators
         ASSIGN, PLUS, MINUS, MULTIPLY, DIVIDE, MODULO,
         EQUALS, NOT_EQUALS, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL,
-        RANGE, COLON, SEMICOLON, COMMA, DOT, 
-        ARROW, FAT_ARROW,
-        
+        RANGE, COLON, SEMICOLON, COMMA, DOT,
+        FAT_ARROW,
+
         // Brackets
         LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACE, RBRACE,
-        
+
         // Special
         EOF, ERROR
     }
@@ -38,7 +38,9 @@ public class Token {
     
     @Override
     public String toString() {
-        return String.format("Token{%s, '%s', line=%d, col=%d}", 
-                           type, lexeme, line, column);
+        return String.format(
+            "Token{%s, '%s', line=%d, col=%d}",
+            type, lexeme, line, column
+        );
     }
 }

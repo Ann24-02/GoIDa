@@ -1,51 +1,76 @@
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class LexerTester {
-    public static void main(String[] args) {
-        String[] testCases = {
-            // Test 1
-            """
-            routine main() is
-                print 42
-            end
-            """,
-            
-            // Test 2
-            """
-            -- This is a comment
-            routine main() is
-                var x : integer is 5
-                var y : integer is 3
-                var z : integer
-                z := x * y + 2
-                print z
-            end
-            """,
-            
-            // Test 3
-            """
-            routine main() is
-                var a : integer is 10
-                if a > 5 then
-                    print 1
-                else
-                    print 0
-                end
-            end
-            """,
-            
-            // Continue with other tests
-        };
-        
-        for (int i = 0; i < testCases.length; i++) {
-            System.out.println("=== Test " + (i + 1) + " ===");
-            Lexer lexer = new Lexer(testCases[i]);
-            Token token;
-            
-            do {
-                token = lexer.nextToken();
-                System.out.println(token);
-            } while (token.type != Token.Type.EOF);
-            
-            System.out.println();
+    private static final Pattern DIGITS = Pattern.compile("(\\d+)");
+
+    private static int numericKey(Path p) {
+        String name = p.getFileName().toString();
+        Matcher m = DIGITS.matcher(name);
+        if (m.find()) {
+            try { return Integer.parseInt(m.group(1)); } catch (NumberFormatException ignored) {}
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    private static void processFile(Path file) throws IOException {
+        if (!Files.isRegularFile(file)) {
+            System.err.println("Not a file: " + file.toAbsolutePath());
+            return;
+        }
+        System.out.println("=== " + file.getFileName() + " ===");
+        String source = Files.readString(file);
+        Lexer lexer = new Lexer(source);
+
+        Token tok;
+        do {
+            tok = lexer.nextToken();
+            System.out.println(tok);
+        } while (tok.type != Token.Type.EOF);
+
+        System.out.println();
+    }
+
+    private static void processDir(Path dir) throws IOException {
+        if (!Files.isDirectory(dir)) {
+            System.err.println("Not a directory: " + dir.toAbsolutePath());
+            return;
+        }
+        List<Path> files;
+        try (var stream = Files.list(dir)) {
+            files = stream
+                    .filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".rout"))
+                    .sorted(
+                        Comparator
+                            .comparingInt(LexerTester::numericKey)
+                            .thenComparing(p -> p.getFileName().toString(), String.CASE_INSENSITIVE_ORDER)
+                    )
+                    .toList();
+        }
+        for (Path f : files) {
+            processFile(f);
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length == 0) {
+            System.err.println("Usage: java LexerTester <file_or_dir> [more_files_or_dirs...]");
+            System.exit(1);
+        }
+
+        for (String a : args) {
+            Path p = Paths.get(a);
+            if (Files.isDirectory(p)) {
+                processDir(p);
+            } else if (Files.isRegularFile(p)) {
+                processFile(p);
+            } else {
+                System.err.println("Does not exist: " + p.toAbsolutePath());
+            }
         }
     }
 }
