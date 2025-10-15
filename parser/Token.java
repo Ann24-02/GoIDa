@@ -1,3 +1,5 @@
+
+package parser;
 public class Token {
     public enum Type {
         // Keywords

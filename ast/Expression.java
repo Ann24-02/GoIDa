@@ -1,7 +1,7 @@
 package ast;
 
-import java.util.List;
-
+import java.util.List;     // для списков
+import parser.Token;
 /**
  * Базовый класс для выражений
  */

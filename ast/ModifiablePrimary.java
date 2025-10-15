@@ -1,5 +1,6 @@
 package ast;
-
+import java.util.List;     // для списков
+import parser.Token;
 /**
  * Изменяемый первичный элемент (левая часть присваивания): x, arr[i], rec.field
  */

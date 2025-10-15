@@ -1,6 +1,8 @@
 package ast;
 
-import java.util.List;
+import java.util.List;     // для списков
+import parser.Token;       // для Token.Type
+
 
 /**
  * Тело подпрограммы или блока: смесь объявлений и инструкций
