@@ -1,0 +1,5 @@
+routine main() is
+    var x : integer;
+    x := 5 + 3;
+    print(x);
+end
