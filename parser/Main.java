@@ -1,20 +1,22 @@
 package parser;
 
 import ast.*;
+import analyzer.*;
+
 import java.io.IOException;
 import java.nio.file.*;
 
 /**
- * Parser test runner.
+ * Parser test runner with semantic analysis and optimization.
  * - If a file path is given: parses that file.
  * - If no args: parses all .rout files under "tests/".
- * - Prints AST for each successfully parsed program.
+ * - Performs semantic analysis and optimization on successfully parsed programs.
  */
 public class Main {
 
     public static void main(String[] args) throws Exception {
         if (args.length > 0) {
-            parseAndPrint(Path.of(args[0]));
+            parseAndAnalyze(Path.of(args[0]));
         } else {
             Path testsDir = Path.of("tests");
             if (!Files.exists(testsDir)) {
@@ -24,31 +26,68 @@ public class Main {
 
             try (var paths = Files.walk(testsDir)) {
                 paths.filter(p -> p.toString().endsWith(".rout"))
-                     .sorted()
-                     .forEach(Main::safeParseAndPrint);
+                    .sorted()
+                    .forEach(Main::safeParseAndAnalyze);
             }
         }
     }
 
-    private static void safeParseAndPrint(Path path) {
+    private static void safeParseAndAnalyze(Path path) {
         try {
-            parseAndPrint(path);
+            parseAndAnalyze(path);
         } catch (Exception e) {
-            System.out.println("? " + path.getFileName() + " failed: " + e.getMessage());
+            System.out.println("✗ " + path.getFileName() + " failed: " + e.getMessage());
         }
     }
 
-    private static void parseAndPrint(Path path) throws IOException {
-        System.out.println("=== Parsing " + path + " ===");
+    private static void parseAndAnalyze(Path path) throws IOException {
+        System.out.println("\n" + "=".repeat(70));
+        System.out.println("=== Parsing: " + path.getFileName() + " ===");
+        System.out.println("=".repeat(70));
+        
         String src = Files.readString(path);
-
         Lexer lexer = new Lexer(src);
         Parser parser = new Parser(lexer);
+        
         Program program = parser.parseProgram();
-
-        System.out.println("? Parsed successfully. AST:");
+        System.out.println("✓ Parsing successful. AST:");
         printNode(program, 0);
-        System.out.println();
+        
+        // ================================================================
+        // SEMANTIC ANALYSIS
+        // ================================================================
+        System.out.println("\n--- Semantic Analysis ---");
+        SemanticAnalyzer analyzer = new SemanticAnalyzer();
+        try {
+            analyzer.analyze(program);
+            System.out.println("✓ Semantic analysis passed");
+            
+            if (!analyzer.getWarnings().isEmpty()) {
+                System.out.println("⚠ Warnings:");
+                for (String warning : analyzer.getWarnings()) {
+                    System.out.println("  - " + warning);
+                }
+            }
+        } catch (SemanticException e) {
+            System.out.println("✗ Semantic error: " + e.getMessage());
+            return;
+        }
+        
+        // ================================================================
+        // OPTIMIZATION
+        // ================================================================
+        System.out.println("\n--- Optimization ---");
+        OptimizationEngine optimizer = new OptimizationEngine();
+        Program optimized = optimizer.optimize(program);
+        
+        if (optimizer.getOptimizationCount() > 0) {
+            System.out.println("✓ Optimized AST:");
+            printNode(optimized, 0);
+        } else {
+            System.out.println("ℹ No optimizations applied");
+        }
+        
+        System.out.println("\n✓ Processing complete");
     }
 
     // ================================================================
@@ -64,7 +103,6 @@ public class Main {
 
         printIndent(indent);
         System.out.println(node.getClass().getSimpleName());
-
         if (node instanceof Program p) {
             for (Declaration d : p.declarations)
                 printNode(d, indent + 2);
@@ -96,6 +134,7 @@ public class Main {
                 System.out.println("returnType:");
                 printNode(r.returnType, indent + 4);
             }
+
             printIndent(indent + 2);
             System.out.println("body:");
             if (r.body != null) printNode(r.body, indent + 4);

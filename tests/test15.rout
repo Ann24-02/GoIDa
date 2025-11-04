@@ -1,7 +1,7 @@
 -- demonstrates reference semantics for records and procedure calls
 
 type Point is record
-    var x : integer
+    var x : integer is 4
     var y : integer
 end
 

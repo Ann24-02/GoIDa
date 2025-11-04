@@ -1,0 +1,82 @@
+# Compiled class files
+*.class
+
+# Generated files
+*.jar
+*.war
+*.ear
+
+# Build directories
+bin/
+build/
+target/
+out/
+dist/
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*.classpath
+*.project
+.settings/
+.DS_Store
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+
+# Maven and Gradle
+.gradle/
+gradle/
+*.gradle
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Ant
+.ant.properties
+ant.properties
+
+# Package files
+*.zip
+*.tar.gz
+
+# Log files
+*.log
+logs/
+
+# Operating system files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# Java specific
+.classpath
+.factorypath
+.c9/
+*.jks
+*.keystore
+
+# VS Code specific
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
