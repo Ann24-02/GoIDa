@@ -1,0 +1,69 @@
+-- Simple optimization tests that work with current parser
+
+-- 1. CONSTANT FOLDING - basic arithmetic
+var a: integer is 5 + 3 * 2;           -- 5 + 6 = 11
+var b: integer is (10 + 2) * 3;        -- 12 * 3 = 36
+var c: boolean is 3 < 5;               -- true
+var d: integer is -(-8);               -- 8
+
+-- 2. DEAD CODE ELIMINATION
+routine test_dead_code() is
+    print "Before return";
+    return;
+    print "After return - dead code";  -- Should be removed
+end;
+
+-- 3. IF SIMPLIFICATION
+routine test_if_simple() is
+    -- This if should be completely removed
+    if false then
+        print "Never printed";
+    end;
+    
+    -- Only then branch should remain  
+    if true then
+        print "Always printed";
+    else
+        print "Never printed - removed";
+    end;
+end;
+
+-- 4. COMBINED OPTIMIZATIONS
+routine test_combined() is
+    var x: integer is (2 + 3) * 4;  -- 5 * 4 = 20
+    
+    -- This if should be removed (false condition)
+    if 10 < 5 then
+        print "This won't print";
+    end;
+    
+    -- This if should keep only then branch
+    if x > 10 then  -- 20 > 10 = true
+        print "X is large";
+    else
+        print "This else removed";
+    end;
+end;
+
+-- MAIN ROUTINE
+routine main() is
+    print "=== Testing Optimizations ===";
+    
+    -- Test constant folding
+    print "Constants:";
+    print "a =", a, "(should be 11)";
+    print "b =", b, "(should be 36)"; 
+    print "c =", c, "(should be true)";
+    print "d =", d, "(should be 8)";
+    
+    -- Test dead code
+    test_dead_code();
+    
+    -- Test if simplification
+    test_if_simple();
+    
+    -- Test combined
+    test_combined();
+    
+    print "=== Optimization tests completed ===";
+end;

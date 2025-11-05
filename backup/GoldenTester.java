@@ -4,7 +4,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import parser.Lexer;
+import parser.Token;
 public class GoldenTester {
     private static final String FLAG_UPDATE = "--update";
     private static final String FLAG_UPDATE_SHORT = "-u";

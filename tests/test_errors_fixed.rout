@@ -1,0 +1,39 @@
+-- Test semantic errors - CORRECT SYNTAX
+
+-- Error 1: Using undeclared variable
+routine undeclared_var_test() is
+    x := 10;  -- Error: x is not declared
+end
+
+-- Error 2: Calling undefined function  
+routine call_undefined_test() is
+    undefined_function(1, 2, 3);  -- Error: function not declared
+end
+
+-- Error 3: Duplicate variable declaration
+var duplicate: integer is 1;
+var duplicate: integer is 2;  -- Error: duplicate variable
+
+-- Error 4: Using variable before declaration
+routine use_before_declare() is
+    y := z;  -- Error: z not declared
+    var z: integer is 5;
+end
+
+-- Error 5: Function with correct syntax but semantic error
+routine test_func(a: integer, b: real) is
+    print a, b;
+end
+
+routine wrong_args_test() is
+    test_func();                    -- Error: too few arguments
+    test_func(1, 2.0, "extra");    -- Error: too many arguments  
+    test_func("string", 2.0);       -- Error: wrong argument type
+end
+
+routine main() is
+    undeclared_var_test();
+    call_undefined_test();
+    use_before_declare();
+    wrong_args_test();
+end

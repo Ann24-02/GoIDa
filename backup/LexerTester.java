@@ -3,7 +3,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import parser.Lexer;
+import parser.Token;
 public class LexerTester {
     private static final Pattern DIGITS = Pattern.compile("(\\d+)");
 
