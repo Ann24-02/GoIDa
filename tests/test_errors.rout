@@ -1,0 +1,16 @@
+-- Undefined variable
+routine test1() is
+    x := 10  -- Error: x not declared
+end
+
+-- Return outside function
+return 5  -- Error: return outside routine
+
+-- Undefined function call
+routine test2() is
+    undefined_function()  -- Error: function not declared
+end
+
+-- Duplicate variable
+var a: integer is 1
+var a: integer is 2  -- Error: duplicate declaration

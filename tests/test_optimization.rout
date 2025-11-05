@@ -1,0 +1,26 @@
+-- Constant folding
+var x: integer is 5 + 3 * 2  -- Should become 11
+var y: boolean is 3 < 5 and true  -- Should become true
+
+-- Dead code elimination
+routine test() return integer is
+    return 42
+    print "This should be removed"  -- Dead code
+end
+
+-- If simplification
+routine check() is
+    if true then
+        print "Always printed"
+    else
+        print "Never printed"  -- Should be removed
+    end
+    
+    if false then
+        print "Never reached"  -- Should be removed
+    end
+end
+
+-- Unary optimization
+var z: integer is -(-5)  -- Should become 5
+var flag: boolean is not false  -- Should become true
