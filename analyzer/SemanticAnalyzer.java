@@ -4,189 +4,166 @@ import ast.*;
 import java.util.*;
 
 /**
- * SemanticAnalyzer - основной класс для семантического анализа.
- * 
- * Реализованные проверки (non-modifying):
- * 1. Declarations Before Usage - переменные/функции используются после объявления
- * 2. Correct Keyword Usage - return только внутри функций
- * 3. Type Checking (частичное) - проверка типов в присваиваниях
- * 4. Unused Variables Detection - обнаружение неиспользованных переменных
+ * SemanticAnalyzer - runs semantic checks over the AST.
+ *
+ * Non-modifying checks included:
+ * 1) Declarations before usage (variables, routines, types must exist before use)
+ * 2) Correct keyword usage (return only inside routines)
+ * 3) Basic type checks
+ * 4) Unused variable detection (produces warnings)
+ * 5) Arity check for routine calls (number of args must match)
+ *
+ * Note: this analyzer collects multiple errors (when possible) and then
+ * throws the first one to keep a simple external contract. You can fetch
+ * all collected errors via getErrors().
  */
 public class SemanticAnalyzer {
-    
-    private SemanticContext context;
-    private List<String> warnings = new ArrayList<>();
-    
+
+    private final SemanticContext context;
+    private final List<String> warnings = new ArrayList<>();
+    private final List<SemanticException> errors = new ArrayList<>();
+
     public SemanticAnalyzer() {
         this.context = new SemanticContext();
     }
-    
-    // ================================================================
-    // ГЛАВНЫЙ МЕТОД АНАЛИЗА
-    // ================================================================
-    
+
+    /**
+     * Run semantic analysis in two passes:
+     * Pass 1: collect only global declarations (vars, routines, types).
+     * Pass 2: check each top-level declaration and its body in order.
+     *
+     * We collect errors across both passes. After both passes, if any
+     * errors were collected, we throw the first one, but you can inspect
+     * the rest with getErrors().
+     */
     public void analyze(Program program) {
-        // Проход 1: собрать глобальные декларации
+        // Pass 1: collect ONLY globals
         for (Declaration decl : program.declarations) {
-            collectGlobalDeclaration(decl);
+            try {
+                collectGlobalDeclaration(decl);
+            } catch (SemanticException e) {
+                errors.add(e);
+            }
         }
-        
-        // Проход 2: проверить использование
+
+        // Pass 2: check top-level decls
         for (Declaration decl : program.declarations) {
-            checkDeclaration(decl);
+            try {
+                checkDeclaration(decl);
+            } catch (SemanticException e) {
+                errors.add(e);
+            }
+        }
+
+        // Add warnings
+        addUnusedWarnings(context.getUnusedVariables());
+
+        // If there are errors, throw the first one to fail the file
+        if (!errors.isEmpty()) {
+            throw errors.get(0);
         }
     }
-    
-    // ================================================================
-    // ПРОХОД 1: СБОР ГЛОБАЛЬНЫХ ДЕКЛАРАЦИЙ
-    // ================================================================
-    
+
+    public List<SemanticException> getErrors() {
+        return new ArrayList<>(errors);
+    }
+
+   // Pass 1: collect global declarations
     private void collectGlobalDeclaration(Declaration decl) {
         if (decl instanceof VariableDeclaration v) {
-            try {
-                context.declareVariable(v.name, v.type, v.line, v.column);
-            } catch (SemanticException e) {
-                // Игнорируем дублирование на глобальном уровне для теперь
-            }
+            // global variable becomes visible
+            context.declareVariable(v.name, v.type, v.line, v.column);
+
         } else if (decl instanceof RoutineDeclaration r) {
-            try {
-                context.declareRoutine(r.name, r.parameters, r.returnType, r.line, r.column);
-            } catch (SemanticException e) {
-                // Игнорируем
-            }
+            context.declareRoutine(r.name, r.parameters, r.returnType, r.line, r.column);
+
         } else if (decl instanceof TypeDeclaration t) {
-            try {
-                context.declareType(t.name, t.aliasedType, t.line, t.column);
-            } catch (SemanticException e) {
-                // Игнорируем
-            }
+            context.declareType(t.name, t.aliasedType, t.line, t.column);
         }
     }
-    
-    // ================================================================
-    // ПРОХОД 2: ПРОВЕРКА И АНАЛИЗ
-    // ================================================================
-    
+
+    // Pass 2: check declarations and bodies
     private void checkDeclaration(Declaration decl) {
         if (decl instanceof VariableDeclaration v) {
             if (v.initializer != null) {
                 checkExpression(v.initializer);
             }
+
         } else if (decl instanceof RoutineDeclaration r) {
             context.enterRoutine(r);
-            context.enterScope();  // Новый скоп для тела функции
-            
-            // Объявить параметры функции
+            context.enterScope();  // routine's local scope
+
+            // Parameters are visible inside the body
             for (Parameter p : r.parameters) {
                 try {
                     context.declareVariable(p.name, p.type, p.line, p.column);
                 } catch (SemanticException e) {
-                    // Игнорируем дублирование параметров
+                    // If duplicate parameter names exist, collect and continue
+                    errors.add(e);
                 }
             }
-            
-            // Собрать все декларации в теле функции (первый проход)
-            if (r.body != null) {
-                collectBodyDeclarations(r.body);
-            }
-            
-            // Проверить тело функции (второй проход)
+
+            // Check body in order
             if (r.body != null) {
                 checkBody(r.body);
             } else if (r.expressionBody != null) {
                 checkExpression(r.expressionBody);
             }
-            
+
             context.exitScope();
             context.exitRoutine();
         }
     }
-    
-    // Собрать все декларации в теле (для корректной работы скопов)
-    private void collectBodyDeclarations(Body body) {
-        if (body == null) return;
-        
-        for (ASTNode element : body.elements) {
-            if (element instanceof Declaration d) {
-                if (d instanceof VariableDeclaration v) {
-                    try {
-                        context.declareVariable(v.name, v.type, v.line, v.column);
-                    } catch (SemanticException e) {
-                        // Игнорируем дублирование для скопов (могут быть вложенные блоки)
-                    }
-                } else if (d instanceof TypeDeclaration t) {
-                    try {
-                        context.declareType(t.name, t.aliasedType, t.line, t.column);
-                    } catch (SemanticException e) {
-                        // Игнорируем
-                    }
-                }
-            } else if (element instanceof Statement s) {
-                collectStatementDeclarations(s);
-            }
-        }
-    }
-    
-    private void collectStatementDeclarations(Statement stmt) {
-        if (stmt instanceof IfStatement ifs) {
-            if (ifs.thenBranch != null) {
-                collectBodyDeclarations(ifs.thenBranch);
-            }
-            if (ifs.elseBranch != null) {
-                collectBodyDeclarations(ifs.elseBranch);
-            }
-        } else if (stmt instanceof WhileLoop wl) {
-            if (wl.body != null) {
-                collectBodyDeclarations(wl.body);
-            }
-        } else if (stmt instanceof ForLoop fl) {
-            // Объявить переменную цикла
-            try {
-                context.declareVariable(fl.loopVariable, null, fl.line, fl.column);
-            } catch (SemanticException e) {
-                // Игнорируем
-            }
-            
-            if (fl.body != null) {
-                collectBodyDeclarations(fl.body);
-            }
-        }
-    }
-    
+
     private void checkBody(Body body) {
         if (body == null) return;
-        
+
         for (ASTNode element : body.elements) {
-            if (element instanceof Declaration d) {
-                checkDeclaration(d);
+            if (element instanceof VariableDeclaration v) {
+                // 1) check initializer first (can only use earlier-declared names)
+                if (v.initializer != null) {
+                    checkExpression(v.initializer);
+                }
+                // 2) then declare the variable (visible for later lines)
+                context.declareVariable(v.name, v.type, v.line, v.column);
+
+            } else if (element instanceof TypeDeclaration t) {
+                // type becomes visible
+                context.declareType(t.name, t.aliasedType, t.line, t.column);
+
             } else if (element instanceof Statement s) {
                 checkStatement(s);
+
+            } else if (element instanceof Declaration d) {
+                checkDeclaration(d);
             }
         }
     }
-    
+
     private void checkStatement(Statement stmt) {
         if (stmt instanceof Assignment a) {
             checkAssignment(a);
+
         } else if (stmt instanceof RoutineCall rc) {
             checkRoutineCall(rc);
+
         } else if (stmt instanceof PrintStatement ps) {
             checkPrintStatement(ps);
+
         } else if (stmt instanceof IfStatement ifs) {
             checkIfStatement(ifs);
+
         } else if (stmt instanceof WhileLoop wl) {
             checkWhileLoop(wl);
+
         } else if (stmt instanceof ForLoop fl) {
             checkForLoop(fl);
         }
     }
-    
-    // ================================================================
-    // ПРОВЕРКА: Correct Keyword Usage
-    // ================================================================
-    
+
+    // Routine call checks (return, existence, arity)
     private void checkRoutineCall(RoutineCall rc) {
-        // Проверка 1: return только внутри функций
+        // 1) 'return' only inside routines
         if ("return".equals(rc.routineName)) {
             if (!context.isInRoutine()) {
                 throw new SemanticException(
@@ -194,38 +171,45 @@ public class SemanticAnalyzer {
                     rc.line, rc.column
                 );
             }
+            // No arity check for 'return'
         }
-        // Проверка 2: пропустить for_each - это спец функция
+        // 2) allow special built-ins like "for_each"
         else if (rc.routineName != null && rc.routineName.contains("for_each")) {
-            // for_each - встроенная функция, пропускаем проверку
         }
-        // Проверка 3: вызванная функция должна быть объявлена
-        else if (!"return".equals(rc.routineName)) {
+        // 3) normal routine: must exist and have correct arity
+        else {
             if (!context.isDeclaredRoutine(rc.routineName)) {
                 throw new SemanticException(
                     "Routine '" + rc.routineName + "' is not declared",
                     rc.line, rc.column
                 );
             }
+            SemanticContext.RoutineInfo info = context.getRoutineInfo(rc.routineName);
+            int expected = (info.params != null ? info.params.size() : 0);
+            int given = (rc.arguments != null ? rc.arguments.size() : 0);
+            if (given != expected) {
+                throw new SemanticException(
+                    "Routine '" + rc.routineName + "' expects " + expected +
+                    " argument(s) but got " + given,
+                    rc.line, rc.column
+                );
+            }
         }
-        
-        // Проверить аргументы
+
+        // 4) check each argument expression
         for (Expression arg : rc.arguments) {
             checkExpression(arg);
         }
     }
-    
-    // ================================================================
-    // ПРОВЕРКА: Declarations Before Usage
-    // ================================================================
-    
+
+
+    // Declarations-before-usage and basic checks inside expressions
     private void checkAssignment(Assignment a) {
-        // Проверить правую часть
+        // Check right-hand side
         checkExpression(a.value);
-        
-        // Проверить левую часть (целевая переменная)
+
+        // Check left-hand side target
         if (a.target instanceof ModifiablePrimary mp) {
-            // Целевая переменная должна быть объявлена
             if (!context.isDeclaredVariable(mp.baseName)) {
                 throw new SemanticException(
                     "Variable '" + mp.baseName + "' is not declared",
@@ -233,8 +217,8 @@ public class SemanticAnalyzer {
                 );
             }
             context.markVariableUsed(mp.baseName);
-            
-            // Проверить индексы и поля
+
+            // Check any index expressions
             for (ModifiablePrimary.Access acc : mp.accesses) {
                 if (acc.index != null) {
                     checkExpression(acc.index);
@@ -242,12 +226,11 @@ public class SemanticAnalyzer {
             }
         }
     }
-    
+
     private void checkExpression(Expression expr) {
         if (expr == null) return;
-        
+
         if (expr instanceof Identifier id) {
-            // Переменная должна быть объявлена
             if (!context.isDeclaredVariable(id.name)) {
                 throw new SemanticException(
                     "Variable '" + id.name + "' is not declared",
@@ -255,22 +238,34 @@ public class SemanticAnalyzer {
                 );
             }
             context.markVariableUsed(id.name);
-        } 
-        else if (expr instanceof BinaryExpression be) {
+
+        } else if (expr instanceof BinaryExpression be) {
             checkExpression(be.left);
             checkExpression(be.right);
-        } 
-        else if (expr instanceof UnaryExpression ue) {
+
+        } else if (expr instanceof UnaryExpression ue) {
             checkExpression(ue.operand);
-        } 
-        else if (expr instanceof FunctionCall fc) {
-            // Проверить аргументы
+
+        } else if (expr instanceof FunctionCall fc) {
+            // If this matches a declared routine, enforce arity too
+            if (fc.functionName != null && context.isDeclaredRoutine(fc.functionName)) {
+                SemanticContext.RoutineInfo info = context.getRoutineInfo(fc.functionName);
+                int expected = (info.params != null ? info.params.size() : 0);
+                int given = (fc.arguments != null ? fc.arguments.size() : 0);
+                if (given != expected) {
+                    throw new SemanticException(
+                        "Routine '" + fc.functionName + "' expects " + expected +
+                        " argument(s) but got " + given,
+                        fc.line, fc.column
+                    );
+                }
+            }
+            // Check all argument expressions
             for (Expression arg : fc.arguments) {
                 checkExpression(arg);
             }
-        } 
-        else if (expr instanceof ModifiablePrimary mp) {
-            // Проверить базовую переменную
+
+        } else if (expr instanceof ModifiablePrimary mp) {
             if (!context.isDeclaredVariable(mp.baseName)) {
                 throw new SemanticException(
                     "Variable '" + mp.baseName + "' is not declared",
@@ -278,8 +273,7 @@ public class SemanticAnalyzer {
                 );
             }
             context.markVariableUsed(mp.baseName);
-            
-            // Проверить индексы
+
             for (ModifiablePrimary.Access acc : mp.accesses) {
                 if (acc.index != null) {
                     checkExpression(acc.index);
@@ -287,17 +281,14 @@ public class SemanticAnalyzer {
             }
         }
     }
-    
-    // ================================================================
-    // ПРОВЕРКА: Type Checking (частичное)
-    // ================================================================
-    
+
+    // Other statements
     private void checkPrintStatement(PrintStatement ps) {
         for (Expression expr : ps.expressions) {
             checkExpression(expr);
         }
     }
-    
+
     private void checkIfStatement(IfStatement ifs) {
         checkExpression(ifs.condition);
         if (ifs.thenBranch != null) {
@@ -307,7 +298,7 @@ public class SemanticAnalyzer {
             checkBody(ifs.elseBranch);
         }
     }
-    
+
     private void checkWhileLoop(WhileLoop wl) {
         checkExpression(wl.condition);
         context.enterLoop();
@@ -316,32 +307,39 @@ public class SemanticAnalyzer {
         }
         context.exitLoop();
     }
-    
+
     private void checkForLoop(ForLoop fl) {
-        // Переменная цикла уже декларирована в collectBodyDeclarations
         context.enterLoop();
-        
+
+        // Range bounds are checked before the loop var exists
         if (fl.range != null) {
             checkExpression(fl.range.start);
             checkExpression(fl.range.end);
         }
-        
+
+        // Declare the loop variable (visible in the loop body)
+        context.declareVariable(fl.loopVariable, null, fl.line, fl.column);
+
         if (fl.body != null) {
             checkBody(fl.body);
         }
-        
+
         context.exitLoop();
     }
-    
-    // ================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // ================================================================
-    
+
+
+    // Warnings
     public List<String> getWarnings() {
         return new ArrayList<>(warnings);
     }
-    
+
     private void addWarning(String warning) {
         warnings.add(warning);
+    }
+
+    private void addUnusedWarnings(List<SemanticContext.VarInfo> vars) {
+        for (SemanticContext.VarInfo v : vars) {
+            addWarning("Variable '" + v.name + "' declared at " + v.line + ":" + v.column + " is never used");
+        }
     }
 }

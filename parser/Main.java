@@ -1,16 +1,16 @@
 package parser;
 
-import ast.*;
 import analyzer.*;
-
+import ast.*;
 import java.io.IOException;
 import java.nio.file.*;
 
 /**
- * Parser test runner with semantic analysis and optimization.
+ * Parser runner with semantic analysis and optimization.
  * - If a file path is given: parses that file.
  * - If no args: parses all .rout files under "tests/".
- * - Performs semantic analysis and optimization on successfully parsed programs.
+ * - Runs semantic analysis and prints all collected errors (first shown as primary).
+ * - Runs optimizer only if semantics passed.
  */
 public class Main {
 
@@ -26,8 +26,8 @@ public class Main {
 
             try (var paths = Files.walk(testsDir)) {
                 paths.filter(p -> p.toString().endsWith(".rout"))
-                    .sorted()
-                    .forEach(Main::safeParseAndAnalyze);
+                     .sorted()
+                     .forEach(Main::safeParseAndAnalyze);
             }
         }
     }
@@ -36,7 +36,7 @@ public class Main {
         try {
             parseAndAnalyze(path);
         } catch (Exception e) {
-            System.out.println("✗ " + path.getFileName() + " failed: " + e.getMessage());
+            System.out.println("X " + path.getFileName() + " failed: " + e.getMessage());
         }
     }
 
@@ -44,24 +44,26 @@ public class Main {
         System.out.println("\n" + "=".repeat(70));
         System.out.println("=== Parsing: " + path.getFileName() + " ===");
         System.out.println("=".repeat(70));
-        
+
         String src = Files.readString(path);
         Lexer lexer = new Lexer(src);
         Parser parser = new Parser(lexer);
-        
+
         Program program = parser.parseProgram();
         System.out.println("✓ Parsing successful. AST:");
         printNode(program, 0);
-        
+
         // ================================================================
         // SEMANTIC ANALYSIS
         // ================================================================
         System.out.println("\n--- Semantic Analysis ---");
         SemanticAnalyzer analyzer = new SemanticAnalyzer();
+        boolean semanticOk = true;
+
         try {
             analyzer.analyze(program);
             System.out.println("✓ Semantic analysis passed");
-            
+
             if (!analyzer.getWarnings().isEmpty()) {
                 System.out.println("⚠ Warnings:");
                 for (String warning : analyzer.getWarnings()) {
@@ -69,31 +71,42 @@ public class Main {
                 }
             }
         } catch (SemanticException e) {
-            System.out.println("✗ Semantic error: " + e.getMessage());
-            return;
+            semanticOk = false;
+            // Show the primary error (the one thrown)
+            System.out.println("X Semantic error: " + e.getMessage());
+
+            // If there are more collected errors, print them too
+            var all = analyzer.getErrors();
+            if (all.size() > 1) {
+                System.out.println("… plus " + (all.size() - 1) + " more error(s):");
+                for (int i = 1; i < all.size(); i++) {
+                    System.out.println("  - " + all.get(i).getMessage());
+                }
+            }
         }
-        
+
         // ================================================================
-        // OPTIMIZATION
+        // OPTIMIZATION (only if semantics passed)
         // ================================================================
+        if (!semanticOk) {
+            return; // stop for this file if semantics failed
+        }
+
         System.out.println("\n--- Optimization ---");
         OptimizationEngine optimizer = new OptimizationEngine();
         Program optimized = optimizer.optimize(program);
-        
+
         if (optimizer.getOptimizationCount() > 0) {
             System.out.println("✓ Optimized AST:");
             printNode(optimized, 0);
         } else {
-            System.out.println("ℹ No optimizations applied");
+            System.out.println("No optimizations applied");
         }
-        
+
         System.out.println("\n✓ Processing complete");
     }
 
-    // ================================================================
     // AST Pretty Printer
-    // ================================================================
-
     private static void printNode(Object node, int indent) {
         if (node == null) {
             printIndent(indent);

@@ -4,17 +4,17 @@ import ast.*;
 import java.util.*;
 
 /**
- * SemanticContext - управляет символьными таблицами и контекстом анализа.
- * Отслеживает декларации переменных, функций, типов и текущий скоп.
+ * SemanticContext - manages symbol tables and analysis context.
+ * Tracks declarations of variables, routines, types, and the current scope.
  */
 public class SemanticContext {
     
-    // Информация о переменной
+    // Information about a variable
     public static class VarInfo {
         public final String name;
         public final Type type;
         public final int line, column;
-        public boolean used = false;  // используется ли
+        public boolean used = false;  // whether it was used
         
         public VarInfo(String name, Type type, int line, int column) {
             this.name = name;
@@ -24,7 +24,7 @@ public class SemanticContext {
         }
     }
     
-    // Информация о функции
+    // Information about a routine (function/procedure)
     public static class RoutineInfo {
         public final String name;
         public final List<Parameter> params;
@@ -40,26 +40,23 @@ public class SemanticContext {
         }
     }
     
-    // Стек скопов (для функций и блоков)
+    // Stack of scopes (for routines and blocks)
     private final Deque<Map<String, VarInfo>> scopes = new ArrayDeque<>();
     
-    // Глобальные декларации (функции и типы)
+    // Global declarations (routines and types)
     private final Map<String, RoutineInfo> routines = new HashMap<>();
     private final Map<String, Type> types = new HashMap<>();
     
-    // Текущий контекст
+    // Current context
     private RoutineDeclaration currentRoutine = null;
     private boolean inLoop = false;
     
     public SemanticContext() {
-        // Глобальный скоп
+        // Global scope
         scopes.push(new HashMap<>());
     }
     
-    // ================================================================
-    // Управление скопом
-    // ================================================================
-    
+    // Scope management
     public void enterScope() {
         scopes.push(new HashMap<>());
     }
@@ -100,10 +97,8 @@ public class SemanticContext {
         return currentRoutine;
     }
     
-    // ================================================================
-    // Декларации переменных
-    // ================================================================
     
+    // Variable management
     public void declareVariable(String name, Type type, int line, int column) {
         Map<String, VarInfo> current = scopes.peek();
         if (current.containsKey(name)) {
@@ -116,7 +111,7 @@ public class SemanticContext {
     }
     
     public boolean isDeclaredVariable(String name) {
-        // Ищем в текущем скопе и родительских
+        // Search in the current scope and all parent scopes
         for (Map<String, VarInfo> scope : scopes) {
             if (scope.containsKey(name)) {
                 return true;
@@ -146,10 +141,7 @@ public class SemanticContext {
         }
     }
     
-    // ================================================================
-    // Декларации функций
-    // ================================================================
-    
+    // Routine declarations
     public void declareRoutine(String name, List<Parameter> params, Type returnType, int line, int column) {
         if (routines.containsKey(name)) {
             throw new SemanticException(
@@ -168,10 +160,7 @@ public class SemanticContext {
         return routines.get(name);
     }
     
-    // ================================================================
-    // Декларации типов
-    // ================================================================
-    
+    // Type declarations
     public void declareType(String name, Type type, int line, int column) {
         if (types.containsKey(name)) {
             throw new SemanticException(
@@ -190,10 +179,7 @@ public class SemanticContext {
         return types.get(name);
     }
     
-    // ================================================================
-    // Сбор неиспользованных переменных
-    // ================================================================
-    
+    // Collect unused variables in the current scope
     public List<VarInfo> getUnusedVariables() {
         List<VarInfo> unused = new ArrayList<>();
         Map<String, VarInfo> current = scopes.peek();

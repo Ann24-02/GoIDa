@@ -1,4 +1,4 @@
--- Test semantic errors - CORRECT SYNTAX
+-- Test semantic errors
 
 -- Error 1: Using undeclared variable
 routine undeclared_var_test() is

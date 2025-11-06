@@ -1,8 +1,8 @@
 package analyzer;
 
 /**
- * Исключение семантического анализа.
- * Содержит информацию о линии и колонне ошибки.
+ * Semantic analysis exception.
+ * Stores the line and column of the error.
  */
 public class SemanticException extends RuntimeException {
     private final int line;

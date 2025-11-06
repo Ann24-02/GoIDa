@@ -1,48 +1,39 @@
 package analyzer;
 
 import ast.*;
+import java.util.*;
 import parser.Token;
 
-import java.util.*;
-
 /**
- * OptimizationEngine - движок оптимизации АСТ.
- * 
- * Реализованные оптимизации (modifying):
- * 1. Constant Expression Simplification - упрощение 5 + 3 → 8, 3 < 5 → true
- * 2. Dead Code Elimination - удаление кода после return
- * 3. If Simplification - упрощение if (true/false)
- * 4. Unused Variable Removal (опционально)
+ * OptimizationEngine - does AST optimizations.
+ *
+ * Optimizations (modifying):
+ * 1. Constant Expression Simplification — e.g., 5 + 3 -> 8, 3 < 5 -> true
+ * 2. Dead Code Elimination — remove code after 'return'
+ * 3. If Simplification — simplify 'if (true/false)'
  */
 public class OptimizationEngine {
-    
+
     private int optimizationCount = 0;
-    
+
     public OptimizationEngine() {}
-    
-    // ================================================================
-    // ГЛАВНЫЙ МЕТОД ОПТИМИЗАЦИИ
-    // ================================================================
-    
+
     public Program optimize(Program program) {
         optimizationCount = 0;
         List<Declaration> optimized = new ArrayList<>();
-        
+
         for (Declaration decl : program.declarations) {
             Declaration opt = optimizeDeclaration(decl);
             if (opt != null) {
                 optimized.add(opt);
             }
         }
-        
+
         System.out.println("  [Optimizer] Applied " + optimizationCount + " optimizations");
         return new Program(optimized, program.line, program.column);
     }
-    
-    // ================================================================
-    // ОПТИМИЗАЦИЯ ДЕКЛАРАЦИЙ
-    // ================================================================
-    
+
+    // Declaration Optimization
     private Declaration optimizeDeclaration(Declaration decl) {
         if (decl instanceof VariableDeclaration v) {
             if (v.initializer != null) {
@@ -52,45 +43,43 @@ public class OptimizationEngine {
                 }
             }
             return decl;
-        } 
+        }
         else if (decl instanceof RoutineDeclaration r) {
             if (r.body != null) {
                 Body optBody = optimizeBody(r.body);
                 if (optBody != r.body) {
-                    return new RoutineDeclaration(r.name, r.parameters, r.returnType, 
-                                                 optBody, r.expressionBody, r.line, r.column);
+                    return new RoutineDeclaration(r.name, r.parameters, r.returnType,
+                            optBody, r.expressionBody, r.line, r.column);
                 }
             } else if (r.expressionBody != null) {
                 Expression optExpr = optimizeExpression(r.expressionBody);
                 if (optExpr != r.expressionBody) {
                     return new RoutineDeclaration(r.name, r.parameters, r.returnType,
-                                                 r.body, optExpr, r.line, r.column);
+                            r.body, optExpr, r.line, r.column);
                 }
             }
             return decl;
         }
         else if (decl instanceof TypeDeclaration t) {
-            return decl;  // Типы не оптимизируются
+            // Types are not optimized
+            return decl;
         }
-        
+
         return decl;
     }
-    
-    // ================================================================
-    // ОПТИМИЗАЦИЯ BODY (Dead Code Elimination)
-    // ================================================================
-    
+
+    // Body Optimization
     private Body optimizeBody(Body body) {
         if (body == null) return null;
-        
+
         List<ASTNode> elements = body.elements;
         List<ASTNode> optimized = new ArrayList<>();
-        
+
         for (int i = 0; i < elements.size(); i++) {
             ASTNode elem = elements.get(i);
-            
-            // Оптимизировать элемент
-            ASTNode optElem = null;
+
+            // Optimize the element
+            ASTNode optElem;
             if (elem instanceof Declaration d) {
                 optElem = optimizeDeclaration(d);
             } else if (elem instanceof Statement s) {
@@ -98,31 +87,29 @@ public class OptimizationEngine {
             } else {
                 optElem = elem;
             }
-            
+
             if (optElem != null) {
                 optimized.add(optElem);
             }
-            
-            // ОПТИМИЗАЦИЯ 2: Dead Code Elimination
-            // Если это return, все после этого - мёртвый код
+
+            // Dead Code Elimination:
+            // if we see 'return', everything after it is unreachable
             if (optElem instanceof RoutineCall rc && "return".equals(rc.routineName)) {
                 optimizationCount++;
                 System.out.println("  [Opt] Dead code elimination: removed " + (elements.size() - i - 1) + " unreachable statements");
                 break;
             }
         }
-        
+
         if (optimized.size() == elements.size()) {
-            return body;  // Ничего не изменилось
+            // nothing changed
+            return body;
         }
-        
+
         return new Body(optimized, body.line, body.column);
     }
-    
-    // ================================================================
-    // ОПТИМИЗАЦИЯ STATEMENTS (If Simplification)
-    // ================================================================
-    
+
+    // Statement Optimization
     private Statement optimizeStatement(Statement stmt) {
         if (stmt instanceof Assignment a) {
             Expression optValue = optimizeExpression(a.value);
@@ -132,7 +119,7 @@ public class OptimizationEngine {
             return stmt;
         }
         else if (stmt instanceof RoutineCall rc) {
-            return stmt;
+            return stmt; // nothing to do for plain calls
         }
         else if (stmt instanceof PrintStatement ps) {
             List<Expression> optimized = new ArrayList<>();
@@ -168,50 +155,47 @@ public class OptimizationEngine {
             }
             return stmt;
         }
-        
+
         return stmt;
     }
-    
-    // ОПТИМИЗАЦИЯ 3: If Simplification
+
+    // If Simplification
     private Statement optimizeIfStatement(IfStatement ifs) {
         Expression optCond = optimizeExpression(ifs.condition);
         Body optThen = optimizeBody(ifs.thenBranch);
         Body optElse = ifs.elseBranch != null ? optimizeBody(ifs.elseBranch) : null;
-        
-        // Проверить, является ли условие константой
+
+        // If the condition is a boolean constant, simplify
         if (optCond instanceof BooleanLiteral bl) {
             optimizationCount++;
             if (bl.value) {
-                // if (true) { ... } else { ... } → только then
+                // if (true) keep only 'then'
                 System.out.println("  [Opt] If simplification: if(true) - removed else branch");
                 return new IfStatement(optCond, optThen, null, ifs.line, ifs.column);
             } else {
-                // if (false) { ... } else { ... } → только else или ничего
+                // if (false) keep only 'else' (if it exists), or remove whole if
                 if (optElse != null) {
                     System.out.println("  [Opt] If simplification: if(false) - using else branch");
                     return new IfStatement(optCond, optElse, null, ifs.line, ifs.column);
                 } else {
                     System.out.println("  [Opt] If simplification: if(false) with no else - removed");
-                    // Возвращаем null чтобы удалить весь if
+                    // return null to remove the whole 'if' statement
                     return null;
                 }
             }
         }
-        
+
         if (optCond != ifs.condition || optThen != ifs.thenBranch || optElse != ifs.elseBranch) {
             return new IfStatement(optCond, optThen, optElse, ifs.line, ifs.column);
         }
-        
+
         return ifs;
     }
-    
-    // ================================================================
-    // ОПТИМИЗАЦИЯ EXPRESSIONS
-    // ================================================================
-    
+
+    // Expression Optimization
     private Expression optimizeExpression(Expression expr) {
         if (expr == null) return null;
-        
+
         if (expr instanceof BinaryExpression be) {
             return optimizeBinaryExpression(be);
         }
@@ -232,7 +216,7 @@ public class OptimizationEngine {
             return fc;
         }
         else if (expr instanceof ModifiablePrimary mp) {
-            // Оптимизировать индексы
+            // Optimize index expressions inside the chain
             List<ModifiablePrimary.Access> optimized = new ArrayList<>();
             boolean changed = false;
             for (ModifiablePrimary.Access acc : mp.accesses) {
@@ -249,25 +233,26 @@ public class OptimizationEngine {
             }
             return mp;
         }
-        
-        return expr;  // Literals и Identifiers не меняются
+
+        // Literals and Identifiers are left as is
+        return expr;
     }
-    
-    // ОПТИМИЗАЦИЯ 1: Constant Expression Simplification
+
+    // Constant Expression Simplification
     private Expression optimizeBinaryExpression(BinaryExpression be) {
         Expression left = optimizeExpression(be.left);
         Expression right = optimizeExpression(be.right);
-        
-        // Проверить, обе ли стороны константы
+
+        // If both sides are constants, try to compute the result now
         if (isConstant(left) && isConstant(right)) {
             Object leftVal = evaluateConstant(left);
             Object rightVal = evaluateConstant(right);
-            
+
             if (leftVal != null && rightVal != null) {
                 Object result = evaluateBinaryOp(leftVal, rightVal, be.operator);
                 if (result != null) {
                     optimizationCount++;
-                    
+
                     if (result instanceof Integer) {
                         System.out.println("  [Opt] Constant simplification: " + be.operator + " result = " + result);
                         return new IntegerLiteral((Integer) result, be.line, be.column);
@@ -281,51 +266,47 @@ public class OptimizationEngine {
                 }
             }
         }
-        
+
         if (left != be.left || right != be.right) {
             return new BinaryExpression(left, be.operator, right, be.line, be.column);
         }
-        
+
         return be;
     }
-    
-    // ОПТИМИЗАЦИЯ 1: Unary optimization
+
+    // Unary optimization
     private Expression optimizeUnaryExpression(UnaryExpression ue) {
         Expression operand = optimizeExpression(ue.operand);
-        
-        // Оптимизация: --x → x
+
         if (ue.operator == Token.Type.MINUS && operand instanceof UnaryExpression uo) {
             if (uo.operator == Token.Type.MINUS) {
                 optimizationCount++;
-                System.out.println("  [Opt] Unary simplification: -(-x) → x");
+                System.out.println("  [Opt] Unary simplification: -(-x) -> x");
                 return uo.operand;
             }
         }
-        
-        // Оптимизация: !true → false, !false → true
+
+        // !true -> false, !false -> true
         if (ue.operator == Token.Type.NOT && operand instanceof BooleanLiteral bl) {
             optimizationCount++;
             return new BooleanLiteral(!bl.value, ue.line, ue.column);
         }
-        
+
         if (operand != ue.operand) {
             return new UnaryExpression(ue.operator, operand, ue.line, ue.column);
         }
-        
+
         return ue;
     }
-    
-    // ================================================================
-    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
-    // ================================================================
-    
+
+    // Helpers for constant evaluation
     private boolean isConstant(Expression expr) {
         return expr instanceof IntegerLiteral ||
                expr instanceof RealLiteral ||
                expr instanceof BooleanLiteral ||
                expr instanceof StringLiteral;
     }
-    
+
     private Object evaluateConstant(Expression expr) {
         if (expr instanceof IntegerLiteral il) return il.value;
         if (expr instanceof RealLiteral rl) return rl.value;
@@ -333,13 +314,13 @@ public class OptimizationEngine {
         if (expr instanceof StringLiteral sl) return sl.value;
         return null;
     }
-    
+
     private Object evaluateBinaryOp(Object left, Object right, Token.Type op) {
-        // Integer operations
+        // Integer ops
         if (left instanceof Integer && right instanceof Integer) {
             int l = (Integer) left;
             int r = (Integer) right;
-            
+
             return switch (op) {
                 case PLUS -> l + r;
                 case MINUS -> l - r;
@@ -357,12 +338,12 @@ public class OptimizationEngine {
                 default -> null;
             };
         }
-        
-        // Boolean operations
+
+        // Boolean ops
         if (left instanceof Boolean && right instanceof Boolean) {
             boolean l = (Boolean) left;
             boolean r = (Boolean) right;
-            
+
             return switch (op) {
                 case AND -> l && r;
                 case OR -> l || r;
@@ -371,13 +352,13 @@ public class OptimizationEngine {
                 default -> null;
             };
         }
-        
-        // Double operations
-        if ((left instanceof Double || left instanceof Integer) && 
+
+        // Double (real) ops, also support mixing int and double
+        if ((left instanceof Double || left instanceof Integer) &&
             (right instanceof Double || right instanceof Integer)) {
             double l = ((Number) left).doubleValue();
             double r = ((Number) right).doubleValue();
-            
+
             return switch (op) {
                 case PLUS -> l + r;
                 case MINUS -> l - r;
@@ -392,10 +373,10 @@ public class OptimizationEngine {
                 default -> null;
             };
         }
-        
+
         return null;
     }
-    
+
     public int getOptimizationCount() {
         return optimizationCount;
     }

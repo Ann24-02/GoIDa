@@ -1,0 +1,14 @@
+-- Arity check
+
+-- Declare a routine with 2 params
+routine add(a: integer, b: integer) is
+    print "stub";
+end;
+
+routine main() is
+    -- Too few arguments: expected 2, got 1
+    add(1);
+
+    -- Too many arguments: expected 2, got 3
+    add(1, 2, 3);
+end;
