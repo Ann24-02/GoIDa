@@ -26,7 +26,9 @@ public class SemanticAnalyzer {
     public SemanticAnalyzer() {
         this.context = new SemanticContext();
     }
-
+    public SemanticContext getSemanticContext() {
+    return context;
+}
     /**
      * Run semantic analysis in two passes:
      * Pass 1: collect only global declarations (vars, routines, types).

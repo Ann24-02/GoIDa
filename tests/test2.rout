@@ -1,9 +1,0 @@
--- multiplies 5 by 3, adds 2, and prints the result (17)
-
-routine main() is
-    var x : integer is 5
-    var y : integer is 3
-    var z : integer
-    z := x * y + 2
-    print z
-end

@@ -70,43 +70,39 @@ public class OptimizationEngine {
 
     // Body Optimization
     private Body optimizeBody(Body body) {
-        if (body == null) return null;
+    if (body == null) return null; // как и раньше
+    List<ASTNode> elements = body.elements;
+    List<ASTNode> optimized = new ArrayList<>();
+    boolean changed = false;
 
-        List<ASTNode> elements = body.elements;
-        List<ASTNode> optimized = new ArrayList<>();
-
-        for (int i = 0; i < elements.size(); i++) {
-            ASTNode elem = elements.get(i);
-
-            // Optimize the element
-            ASTNode optElem;
-            if (elem instanceof Declaration d) {
-                optElem = optimizeDeclaration(d);
-            } else if (elem instanceof Statement s) {
-                optElem = optimizeStatement(s);
-            } else {
-                optElem = elem;
-            }
-
-            if (optElem != null) {
-                optimized.add(optElem);
-            }
-
-            // Dead Code Elimination:
-            // if we see 'return', everything after it is unreachable
-            if (optElem instanceof RoutineCall rc && "return".equals(rc.routineName)) {
-                optimizationCount++;
-                System.out.println("  [Opt] Dead code elimination: removed " + (elements.size() - i - 1) + " unreachable statements");
-                break;
-            }
+    for (int i = 0; i < elements.size(); i++) {
+        ASTNode elem = elements.get(i);
+        ASTNode optElem;
+        if (elem instanceof Declaration d) {
+            optElem = optimizeDeclaration(d);
+        } else if (elem instanceof Statement s) {
+            optElem = optimizeStatement(s);
+        } else {
+            optElem = elem;
         }
 
-        if (optimized.size() == elements.size()) {
-            // nothing changed
-            return body;
-        }
+        if (optElem != elem) changed = true;       // заметить замену
+        if (optElem != null) optimized.add(optElem);
+        else changed = true;                        // узел удалён (например, if(false))
 
-        return new Body(optimized, body.line, body.column);
+        // DCE: всё после return — недостижимо
+        if (optElem instanceof RoutineCall rc && "return".equals(rc.routineName)) {
+            int removed = elements.size() - i - 1;
+            if (removed > 0) {
+                changed = true;
+                System.out.println("  [Opt] Dead code elimination: removed " + removed + " statements");
+            }
+            break;
+        }
+    }
+
+    if (!changed) return body;                     // ничего не поменялось
+    return new Body(optimized, body.line, body.column); // вернуть новый Body
     }
 
     // Statement Optimization
