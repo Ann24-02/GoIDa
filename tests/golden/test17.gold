@@ -1,0 +1,18 @@
+Token{IF, 'if', line=1, col=1}
+Token{BOOL_LITERAL, 'true', line=1, col=4}
+Token{THEN, 'then', line=1, col=9}
+Token{IF, 'if', line=2, col=5}
+Token{BOOL_LITERAL, 'false', line=2, col=8}
+Token{THEN, 'then', line=2, col=14}
+Token{PRINT, 'print', line=3, col=9}
+Token{STRING_LITERAL, 'Should not print', line=3, col=15}
+Token{SEMICOLON, ';', line=3, col=33}
+Token{ELSE, 'else', line=4, col=5}
+Token{PRINT, 'print', line=5, col=9}
+Token{STRING_LITERAL, 'Print this', line=5, col=15}
+Token{SEMICOLON, ';', line=5, col=27}
+Token{END, 'end', line=6, col=5}
+Token{SEMICOLON, ';', line=6, col=8}
+Token{END, 'end', line=7, col=1}
+Token{SEMICOLON, ';', line=7, col=4}
+Token{EOF, '', line=8, col=1}

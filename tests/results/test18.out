@@ -1,0 +1,7 @@
+=== Testing: tests/test18.rout ===
+Error testing tests/test18.rout: Unknown declaration at Token{IDENTIFIER, 'sum', line=4, col=1}
+java.lang.RuntimeException: Unknown declaration at Token{IDENTIFIER, 'sum', line=4, col=1}
+	at parser.Parser.parseDeclaration(Parser.java:52)
+	at parser.Parser.parseProgram(Parser.java:41)
+	at AnalyzerTester.testFile(AnalyzerTester.java:36)
+	at AnalyzerTester.main(AnalyzerTester.java:20)

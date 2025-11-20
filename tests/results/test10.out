@@ -1,0 +1,7 @@
+=== Testing: tests/test10.rout ===
+Error testing tests/test10.rout: Unknown declaration at Token{IDENTIFIER, 'Token', line=1, col=1}
+java.lang.RuntimeException: Unknown declaration at Token{IDENTIFIER, 'Token', line=1, col=1}
+	at parser.Parser.parseDeclaration(Parser.java:52)
+	at parser.Parser.parseProgram(Parser.java:41)
+	at AnalyzerTester.testFile(AnalyzerTester.java:36)
+	at AnalyzerTester.main(AnalyzerTester.java:20)

@@ -1,0 +1,187 @@
+Token{VAR, 'var', line=4, col=1}
+Token{IDENTIFIER, 'a', line=4, col=5}
+Token{COLON, ':', line=4, col=6}
+Token{INTEGER, 'integer', line=4, col=8}
+Token{IS, 'is', line=4, col=16}
+Token{INT_LITERAL, '5', line=4, col=19}
+Token{PLUS, '+', line=4, col=21}
+Token{INT_LITERAL, '3', line=4, col=23}
+Token{MULTIPLY, '*', line=4, col=25}
+Token{INT_LITERAL, '2', line=4, col=27}
+Token{SEMICOLON, ';', line=4, col=28}
+Token{VAR, 'var', line=5, col=1}
+Token{IDENTIFIER, 'b', line=5, col=5}
+Token{COLON, ':', line=5, col=6}
+Token{INTEGER, 'integer', line=5, col=8}
+Token{IS, 'is', line=5, col=16}
+Token{LPAREN, '(', line=5, col=19}
+Token{INT_LITERAL, '10', line=5, col=20}
+Token{PLUS, '+', line=5, col=23}
+Token{INT_LITERAL, '2', line=5, col=25}
+Token{RPAREN, ')', line=5, col=26}
+Token{MULTIPLY, '*', line=5, col=28}
+Token{INT_LITERAL, '3', line=5, col=30}
+Token{SEMICOLON, ';', line=5, col=31}
+Token{VAR, 'var', line=6, col=1}
+Token{IDENTIFIER, 'c', line=6, col=5}
+Token{COLON, ':', line=6, col=6}
+Token{BOOLEAN, 'boolean', line=6, col=8}
+Token{IS, 'is', line=6, col=16}
+Token{INT_LITERAL, '3', line=6, col=19}
+Token{LESS, '<', line=6, col=21}
+Token{INT_LITERAL, '5', line=6, col=23}
+Token{SEMICOLON, ';', line=6, col=24}
+Token{VAR, 'var', line=7, col=1}
+Token{IDENTIFIER, 'd', line=7, col=5}
+Token{COLON, ':', line=7, col=6}
+Token{INTEGER, 'integer', line=7, col=8}
+Token{IS, 'is', line=7, col=16}
+Token{MINUS, '-', line=7, col=19}
+Token{LPAREN, '(', line=7, col=20}
+Token{MINUS, '-', line=7, col=21}
+Token{INT_LITERAL, '8', line=7, col=22}
+Token{RPAREN, ')', line=7, col=23}
+Token{SEMICOLON, ';', line=7, col=24}
+Token{ROUTINE, 'routine', line=10, col=1}
+Token{IDENTIFIER, 'test_dead_code', line=10, col=9}
+Token{LPAREN, '(', line=10, col=23}
+Token{RPAREN, ')', line=10, col=24}
+Token{IS, 'is', line=10, col=26}
+Token{PRINT, 'print', line=11, col=5}
+Token{STRING_LITERAL, 'Before return', line=11, col=11}
+Token{SEMICOLON, ';', line=11, col=26}
+Token{RETURN, 'return', line=12, col=5}
+Token{SEMICOLON, ';', line=12, col=11}
+Token{PRINT, 'print', line=13, col=5}
+Token{STRING_LITERAL, 'After return - dead code', line=13, col=11}
+Token{SEMICOLON, ';', line=13, col=37}
+Token{END, 'end', line=14, col=1}
+Token{SEMICOLON, ';', line=14, col=4}
+Token{ROUTINE, 'routine', line=17, col=1}
+Token{IDENTIFIER, 'test_if_simple', line=17, col=9}
+Token{LPAREN, '(', line=17, col=23}
+Token{RPAREN, ')', line=17, col=24}
+Token{IS, 'is', line=17, col=26}
+Token{IF, 'if', line=19, col=5}
+Token{BOOL_LITERAL, 'false', line=19, col=8}
+Token{THEN, 'then', line=19, col=14}
+Token{PRINT, 'print', line=20, col=9}
+Token{STRING_LITERAL, 'Never printed', line=20, col=15}
+Token{SEMICOLON, ';', line=20, col=30}
+Token{END, 'end', line=21, col=5}
+Token{SEMICOLON, ';', line=21, col=8}
+Token{IF, 'if', line=24, col=5}
+Token{BOOL_LITERAL, 'true', line=24, col=8}
+Token{THEN, 'then', line=24, col=13}
+Token{PRINT, 'print', line=25, col=9}
+Token{STRING_LITERAL, 'Always printed', line=25, col=15}
+Token{SEMICOLON, ';', line=25, col=31}
+Token{ELSE, 'else', line=26, col=5}
+Token{PRINT, 'print', line=27, col=9}
+Token{STRING_LITERAL, 'Never printed - removed', line=27, col=15}
+Token{SEMICOLON, ';', line=27, col=40}
+Token{END, 'end', line=28, col=5}
+Token{SEMICOLON, ';', line=28, col=8}
+Token{END, 'end', line=29, col=1}
+Token{SEMICOLON, ';', line=29, col=4}
+Token{ROUTINE, 'routine', line=32, col=1}
+Token{IDENTIFIER, 'test_combined', line=32, col=9}
+Token{LPAREN, '(', line=32, col=22}
+Token{RPAREN, ')', line=32, col=23}
+Token{IS, 'is', line=32, col=25}
+Token{VAR, 'var', line=33, col=5}
+Token{IDENTIFIER, 'x', line=33, col=9}
+Token{COLON, ':', line=33, col=10}
+Token{INTEGER, 'integer', line=33, col=12}
+Token{IS, 'is', line=33, col=20}
+Token{LPAREN, '(', line=33, col=23}
+Token{INT_LITERAL, '2', line=33, col=24}
+Token{PLUS, '+', line=33, col=26}
+Token{INT_LITERAL, '3', line=33, col=28}
+Token{RPAREN, ')', line=33, col=29}
+Token{MULTIPLY, '*', line=33, col=31}
+Token{INT_LITERAL, '4', line=33, col=33}
+Token{SEMICOLON, ';', line=33, col=34}
+Token{IF, 'if', line=36, col=5}
+Token{INT_LITERAL, '10', line=36, col=8}
+Token{LESS, '<', line=36, col=11}
+Token{INT_LITERAL, '5', line=36, col=13}
+Token{THEN, 'then', line=36, col=15}
+Token{PRINT, 'print', line=37, col=9}
+Token{STRING_LITERAL, 'This won't print', line=37, col=15}
+Token{SEMICOLON, ';', line=37, col=33}
+Token{END, 'end', line=38, col=5}
+Token{SEMICOLON, ';', line=38, col=8}
+Token{IF, 'if', line=41, col=5}
+Token{IDENTIFIER, 'x', line=41, col=8}
+Token{GREATER, '>', line=41, col=10}
+Token{INT_LITERAL, '10', line=41, col=12}
+Token{THEN, 'then', line=41, col=15}
+Token{PRINT, 'print', line=42, col=9}
+Token{STRING_LITERAL, 'X is large', line=42, col=15}
+Token{SEMICOLON, ';', line=42, col=27}
+Token{ELSE, 'else', line=43, col=5}
+Token{PRINT, 'print', line=44, col=9}
+Token{STRING_LITERAL, 'This else removed', line=44, col=15}
+Token{SEMICOLON, ';', line=44, col=34}
+Token{END, 'end', line=45, col=5}
+Token{SEMICOLON, ';', line=45, col=8}
+Token{END, 'end', line=46, col=1}
+Token{SEMICOLON, ';', line=46, col=4}
+Token{ROUTINE, 'routine', line=49, col=1}
+Token{IDENTIFIER, 'main', line=49, col=9}
+Token{LPAREN, '(', line=49, col=13}
+Token{RPAREN, ')', line=49, col=14}
+Token{IS, 'is', line=49, col=16}
+Token{PRINT, 'print', line=50, col=5}
+Token{STRING_LITERAL, '=== Testing Optimizations ===', line=50, col=11}
+Token{SEMICOLON, ';', line=50, col=42}
+Token{PRINT, 'print', line=53, col=5}
+Token{STRING_LITERAL, 'Constants:', line=53, col=11}
+Token{SEMICOLON, ';', line=53, col=23}
+Token{PRINT, 'print', line=54, col=5}
+Token{STRING_LITERAL, 'a =', line=54, col=11}
+Token{COMMA, ',', line=54, col=16}
+Token{IDENTIFIER, 'a', line=54, col=18}
+Token{COMMA, ',', line=54, col=19}
+Token{STRING_LITERAL, '(should be 11)', line=54, col=21}
+Token{SEMICOLON, ';', line=54, col=37}
+Token{PRINT, 'print', line=55, col=5}
+Token{STRING_LITERAL, 'b =', line=55, col=11}
+Token{COMMA, ',', line=55, col=16}
+Token{IDENTIFIER, 'b', line=55, col=18}
+Token{COMMA, ',', line=55, col=19}
+Token{STRING_LITERAL, '(should be 36)', line=55, col=21}
+Token{SEMICOLON, ';', line=55, col=37}
+Token{PRINT, 'print', line=56, col=5}
+Token{STRING_LITERAL, 'c =', line=56, col=11}
+Token{COMMA, ',', line=56, col=16}
+Token{IDENTIFIER, 'c', line=56, col=18}
+Token{COMMA, ',', line=56, col=19}
+Token{STRING_LITERAL, '(should be true)', line=56, col=21}
+Token{SEMICOLON, ';', line=56, col=39}
+Token{PRINT, 'print', line=57, col=5}
+Token{STRING_LITERAL, 'd =', line=57, col=11}
+Token{COMMA, ',', line=57, col=16}
+Token{IDENTIFIER, 'd', line=57, col=18}
+Token{COMMA, ',', line=57, col=19}
+Token{STRING_LITERAL, '(should be 8)', line=57, col=21}
+Token{SEMICOLON, ';', line=57, col=36}
+Token{IDENTIFIER, 'test_dead_code', line=60, col=5}
+Token{LPAREN, '(', line=60, col=19}
+Token{RPAREN, ')', line=60, col=20}
+Token{SEMICOLON, ';', line=60, col=21}
+Token{IDENTIFIER, 'test_if_simple', line=63, col=5}
+Token{LPAREN, '(', line=63, col=19}
+Token{RPAREN, ')', line=63, col=20}
+Token{SEMICOLON, ';', line=63, col=21}
+Token{IDENTIFIER, 'test_combined', line=66, col=5}
+Token{LPAREN, '(', line=66, col=18}
+Token{RPAREN, ')', line=66, col=19}
+Token{SEMICOLON, ';', line=66, col=20}
+Token{PRINT, 'print', line=68, col=5}
+Token{STRING_LITERAL, '=== Optimization tests completed ===', line=68, col=11}
+Token{SEMICOLON, ';', line=68, col=49}
+Token{END, 'end', line=69, col=1}
+Token{SEMICOLON, ';', line=69, col=4}
+Token{EOF, '', line=70, col=1}

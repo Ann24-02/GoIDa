@@ -1,0 +1,11 @@
+=== Testing: tests/test_arity.rout ===
+
+--- Semantic Analysis ---
+✗ Semantic error: [10:5] Routine 'add' expects 2 argument(s) but got 1
+
+--- Optimization ---
+  [Optimizer] Applied 0 optimizations
+✓ Optimization completed: 0 optimizations applied
+
+Original AST size: 1
+Optimized AST size: 1

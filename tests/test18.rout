@@ -1,0 +1,6 @@
+routine sum(a: integer, b: integer) is
+    print a + b;
+end;
+sum(1);      
+sum(1,2,3);   
+sum("x", 2); 

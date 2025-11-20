@@ -1,0 +1,11 @@
+=== Testing: tests/test_complex.rout ===
+
+--- Semantic Analysis ---
+✓ Semantic analysis passed
+
+--- Optimization ---
+  [Optimizer] Applied 0 optimizations
+✓ Optimization completed: 0 optimizations applied
+
+Original AST size: 1
+Optimized AST size: 1
