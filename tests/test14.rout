@@ -1,72 +1,14 @@
-Token{ROUTINE, 'routine', line=3, col=1}
-Token{IDENTIFIER, 'printReverse', line=3, col=9}
-Token{LPAREN, '(', line=3, col=21}
-Token{IDENTIFIER, 'arr', line=3, col=22}
-Token{COLON, ':', line=3, col=26}
-Token{ARRAY, 'array', line=3, col=28}
-Token{LBRACKET, '[', line=3, col=33}
-Token{RBRACKET, ']', line=3, col=34}
-Token{INTEGER, 'integer', line=3, col=36}
-Token{RPAREN, ')', line=3, col=43}
-Token{IS, 'is', line=3, col=45}
-Token{VAR, 'var', line=4, col=5}
-Token{IDENTIFIER, 'i', line=4, col=9}
-Token{COLON, ':', line=4, col=11}
-Token{INTEGER, 'integer', line=4, col=13}
-Token{IS, 'is', line=4, col=21}
-Token{IDENTIFIER, 'arr', line=4, col=24}
-Token{DOT, '.', line=4, col=27}
-Token{IDENTIFIER, 'size', line=4, col=28}
-Token{SEMICOLON, ';', line=5, col=5}
-Token{WHILE, 'while', line=5, col=5}
-Token{IDENTIFIER, 'i', line=5, col=11}
-Token{GREATER_EQUAL, '>=', line=5, col=13}
-Token{INT_LITERAL, '1', line=5, col=16}
-Token{LOOP, 'loop', line=5, col=18}
-Token{PRINT, 'print', line=6, col=9}
-Token{IDENTIFIER, 'arr', line=6, col=15}
-Token{LBRACKET, '[', line=6, col=18}
-Token{IDENTIFIER, 'i', line=6, col=19}
-Token{RBRACKET, ']', line=6, col=20}
-Token{SEMICOLON, ';', line=7, col=9}
-Token{IDENTIFIER, 'i', line=7, col=9}
-Token{ASSIGN, ':=', line=7, col=11}
-Token{IDENTIFIER, 'i', line=7, col=14}
-Token{MINUS, '-', line=7, col=16}
-Token{INT_LITERAL, '1', line=7, col=18}
-Token{SEMICOLON, ';', line=8, col=5}
-Token{END, 'end', line=8, col=5}
-Token{SEMICOLON, ';', line=9, col=1}
-Token{END, 'end', line=9, col=1}
-Token{SEMICOLON, ';', line=11, col=1}
-Token{ROUTINE, 'routine', line=11, col=1}
-Token{IDENTIFIER, 'main', line=11, col=9}
-Token{LPAREN, '(', line=11, col=13}
-Token{RPAREN, ')', line=11, col=14}
-Token{IS, 'is', line=11, col=16}
-Token{VAR, 'var', line=12, col=5}
-Token{IDENTIFIER, 'myData', line=12, col=9}
-Token{COLON, ':', line=12, col=16}
-Token{ARRAY, 'array', line=12, col=18}
-Token{LBRACKET, '[', line=12, col=23}
-Token{INT_LITERAL, '4', line=12, col=24}
-Token{RBRACKET, ']', line=12, col=25}
-Token{INTEGER, 'integer', line=12, col=27}
-Token{IS, 'is', line=12, col=35}
-Token{LBRACKET, '[', line=12, col=38}
-Token{INT_LITERAL, '10', line=12, col=39}
-Token{COMMA, ',', line=12, col=41}
-Token{INT_LITERAL, '20', line=12, col=43}
-Token{COMMA, ',', line=12, col=45}
-Token{INT_LITERAL, '30', line=12, col=47}
-Token{COMMA, ',', line=12, col=49}
-Token{INT_LITERAL, '40', line=12, col=51}
-Token{RBRACKET, ']', line=12, col=53}
-Token{SEMICOLON, ';', line=13, col=5}
-Token{IDENTIFIER, 'printReverse', line=13, col=5}
-Token{LPAREN, '(', line=13, col=17}
-Token{IDENTIFIER, 'myData', line=13, col=18}
-Token{RPAREN, ')', line=13, col=24}
-Token{SEMICOLON, ';', line=14, col=1}
-Token{END, 'end', line=14, col=1}
-Token{EOF, '', line=14, col=4}
+-- passes an array to a function and uses .size attribute to print it in reverse
+
+routine printReverse(arr : array[] integer) is
+    var i : integer is arr.size
+    while i >= 1 loop
+        print arr[i]
+        i := i - 1
+    end
+end
+
+routine main() is
+    var myData : array[4] integer is [10, 20, 30, 40]
+    printReverse(myData)
+end

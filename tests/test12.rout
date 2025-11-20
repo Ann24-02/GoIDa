@@ -1,90 +1,24 @@
-Token{ROUTINE, 'routine', line=3, col=1}
-Token{IDENTIFIER, 'main', line=3, col=9}
-Token{LPAREN, '(', line=3, col=13}
-Token{RPAREN, ')', line=3, col=14}
-Token{IS, 'is', line=3, col=16}
-Token{VAR, 'var', line=4, col=5}
-Token{IDENTIFIER, 'a', line=4, col=9}
-Token{COLON, ':', line=4, col=11}
-Token{INTEGER, 'integer', line=4, col=13}
-Token{IS, 'is', line=4, col=21}
-Token{INT_LITERAL, '10', line=4, col=24}
-Token{SEMICOLON, ';', line=5, col=5}
-Token{VAR, 'var', line=5, col=5}
-Token{IDENTIFIER, 'b', line=5, col=9}
-Token{COLON, ':', line=5, col=11}
-Token{INTEGER, 'integer', line=5, col=13}
-Token{IS, 'is', line=5, col=21}
-Token{INT_LITERAL, '20', line=5, col=24}
-Token{SEMICOLON, ';', line=6, col=5}
-Token{VAR, 'var', line=6, col=5}
-Token{IDENTIFIER, 'c', line=6, col=9}
-Token{COLON, ':', line=6, col=11}
-Token{BOOLEAN, 'boolean', line=6, col=13}
-Token{IS, 'is', line=6, col=21}
-Token{BOOL_LITERAL, 'true', line=6, col=24}
-Token{SEMICOLON, ';', line=7, col=5}
-Token{VAR, 'var', line=7, col=5}
-Token{IDENTIFIER, 'd', line=7, col=9}
-Token{COLON, ':', line=7, col=11}
-Token{BOOLEAN, 'boolean', line=7, col=13}
-Token{IS, 'is', line=7, col=21}
-Token{BOOL_LITERAL, 'false', line=7, col=24}
-Token{SEMICOLON, ';', line=10, col=5}
-Token{VAR, 'var', line=10, col=5}
-Token{IDENTIFIER, 'result', line=10, col=9}
-Token{COLON, ':', line=10, col=16}
-Token{BOOLEAN, 'boolean', line=10, col=18}
-Token{IS, 'is', line=10, col=26}
-Token{IDENTIFIER, 'a', line=10, col=29}
-Token{LESS, '<', line=10, col=31}
-Token{IDENTIFIER, 'b', line=10, col=33}
-Token{AND, 'and', line=10, col=35}
-Token{IDENTIFIER, 'c', line=10, col=39}
-Token{EQUALS, '=', line=10, col=41}
-Token{IDENTIFIER, 'd', line=10, col=43}
-Token{OR, 'or', line=10, col=45}
-Token{IDENTIFIER, 'a', line=10, col=48}
-Token{LESS_EQUAL, '<=', line=10, col=50}
-Token{IDENTIFIER, 'b', line=10, col=53}
-Token{SEMICOLON, ';', line=11, col=5}
-Token{IF, 'if', line=11, col=5}
-Token{IDENTIFIER, 'result', line=11, col=8}
-Token{THEN, 'then', line=11, col=15}
-Token{PRINT, 'print', line=12, col=9}
-Token{INT_LITERAL, '1', line=12, col=15}
-Token{SEMICOLON, ';', line=13, col=5}
-Token{ELSE, 'else', line=13, col=5}
-Token{PRINT, 'print', line=14, col=9}
-Token{INT_LITERAL, '0', line=14, col=15}
-Token{SEMICOLON, ';', line=15, col=5}
-Token{END, 'end', line=15, col=5}
-Token{SEMICOLON, ';', line=18, col=5}
-Token{IDENTIFIER, 'result', line=18, col=5}
-Token{ASSIGN, ':=', line=18, col=12}
-Token{IDENTIFIER, 'c', line=18, col=15}
-Token{EQUALS, '=', line=18, col=17}
-Token{IDENTIFIER, 'd', line=18, col=19}
-Token{OR, 'or', line=18, col=21}
-Token{IDENTIFIER, 'a', line=18, col=24}
-Token{LESS_EQUAL, '<=', line=18, col=26}
-Token{IDENTIFIER, 'b', line=18, col=29}
-Token{AND, 'and', line=18, col=31}
-Token{IDENTIFIER, 'a', line=18, col=35}
-Token{LESS, '<', line=18, col=37}
-Token{IDENTIFIER, 'b', line=18, col=39}
-Token{SEMICOLON, ';', line=19, col=5}
-Token{IF, 'if', line=19, col=5}
-Token{IDENTIFIER, 'result', line=19, col=8}
-Token{THEN, 'then', line=19, col=15}
-Token{PRINT, 'print', line=20, col=9}
-Token{INT_LITERAL, '1', line=20, col=15}
-Token{SEMICOLON, ';', line=21, col=5}
-Token{ELSE, 'else', line=21, col=5}
-Token{PRINT, 'print', line=22, col=9}
-Token{INT_LITERAL, '0', line=22, col=15}
-Token{SEMICOLON, ';', line=23, col=5}
-Token{END, 'end', line=23, col=5}
-Token{SEMICOLON, ';', line=24, col=1}
-Token{END, 'end', line=24, col=1}
-Token{EOF, '', line=24, col=4}
+-- evaluates complex boolean expressions with different operator precedences
+
+routine main() is
+    var a : integer is 10
+    var b : integer is 20
+    var c : boolean is true
+    var d : boolean is false
+
+    -- tests operator precedence: relational > AND > OR
+    var result : boolean is a < b and c = d or a <= b
+    if result then
+        print 1
+    else
+        print 0
+    end
+
+    -- tests parentheses changing evaluation order
+    result := c = d or a <= b and a < b
+    if result then
+        print 1
+    else
+        print 0
+    end
+end

@@ -1,29 +1,10 @@
-Token{ROUTINE, 'routine', line=3, col=1}
-Token{IDENTIFIER, 'main', line=3, col=9}
-Token{LPAREN, '(', line=3, col=13}
-Token{RPAREN, ')', line=3, col=14}
-Token{IS, 'is', line=3, col=16}
-Token{VAR, 'var', line=4, col=5}
-Token{IDENTIFIER, 'a', line=4, col=9}
-Token{COLON, ':', line=4, col=11}
-Token{INTEGER, 'integer', line=4, col=13}
-Token{IS, 'is', line=4, col=21}
-Token{INT_LITERAL, '10', line=4, col=24}
-Token{SEMICOLON, ';', line=5, col=5}
-Token{IF, 'if', line=5, col=5}
-Token{IDENTIFIER, 'a', line=5, col=8}
-Token{GREATER, '>', line=5, col=10}
-Token{INT_LITERAL, '5', line=5, col=12}
-Token{THEN, 'then', line=5, col=14}
-Token{PRINT, 'print', line=6, col=9}
-Token{INT_LITERAL, '1', line=6, col=15}
-Token{SEMICOLON, ';', line=7, col=5}
-Token{ELSE, 'else', line=7, col=5}
-Token{PRINT, 'print', line=8, col=9}
-Token{INT_LITERAL, '0', line=8, col=15}
-Token{SEMICOLON, ';', line=9, col=5}
-Token{END, 'end', line=9, col=5}
-Token{SEMICOLON, ';', line=10, col=1}
-Token{END, 'end', line=10, col=1}
-Token{SEMICOLON, ';', line=11, col=1}
-Token{EOF, '', line=11, col=1}
+-- checks if 10 is greater than 5, prints 1 if true, else 0
+
+routine main() is
+    var a : integer is 10
+    if a > 5 then
+        print 1
+    else
+        print 0
+    end
+end
