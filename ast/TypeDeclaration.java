@@ -1,7 +1,6 @@
 package ast;
 
-import parser.Token;
-
+// TypeDeclaration - represents a type declaration that aliases another type
 public class TypeDeclaration extends Declaration {
     public final Type aliasedType;
 

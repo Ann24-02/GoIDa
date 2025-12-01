@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// PrimitiveType - represents a primitive type (e.g., int, bool)
 public class PrimitiveType extends Type {
     public final String typeName;
 

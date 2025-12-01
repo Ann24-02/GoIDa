@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// Identifier - represents an identifier in expressions
 public class Identifier extends Expression {
     public final String name;
 

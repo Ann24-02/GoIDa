@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// WhileLoop - represents a while loop statement
 public class WhileLoop extends Statement {
     public final Expression condition;
     public final Body body;

@@ -9,7 +9,7 @@
     </style>
 </head>
 <body>
-    <h1>🔴 Real WASM Runner</h1>
+    <h1>WASM Runner</h1>
     <input type="file" id="wasmFile" accept=".wasm">
     <button class="btn" onclick="runWasm()">▶️ RUN WASM</button>
     <button class="btn" onclick="clearOutput()">🗑️ CLEAR</button>
@@ -46,7 +46,7 @@
                 return;
             }
 
-            output.textContent = '🔄 Loading WASM...\n';
+            output.textContent = 'Loading WASM...\n';
             
             try {
                 const file = fileInput.files[0];
@@ -54,15 +54,15 @@
                 const wasmModule = await WebAssembly.instantiate(arrayBuffer, importObject);
                 
                 wasmInstance = wasmModule.instance;
-                output.textContent += '✅ WASM loaded\n';
-                output.textContent += `📊 Exports: ${Object.keys(wasmInstance.exports).join(', ')}\n`;
+                output.textContent += 'WASM loaded\n';
+                output.textContent += `Exports: ${Object.keys(wasmInstance.exports).join(', ')}\n`;
                 
                 if (wasmInstance.exports.main) {
-                    output.textContent += '🎯 Calling main()...\n';
+                    output.textContent += 'Calling main()...\n';
                     output.textContent += '══════════════════════════════════════\n';
                     wasmInstance.exports.main();
                     output.textContent += '══════════════════════════════════════\n';
-                    output.textContent += '✅ Program finished\n';
+                    output.textContent += 'Program finished\n';
                 } else {
                     output.textContent += '❌ No main() function\n';
                 }

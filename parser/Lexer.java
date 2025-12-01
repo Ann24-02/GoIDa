@@ -1,9 +1,10 @@
-
 package parser;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+// Lexer converts source code into tokens
+// Handles keywords, identifiers, literals, operators, and automatic semicolon insertion
 public class Lexer {
     private final String input;
     private int pos = 0;
@@ -16,6 +17,7 @@ public class Lexer {
     private int braceDepth = 0;    // { }
     private Token.Type lastEmitted = null;
 
+    // Keyword table
     private static final Map<String, Token.Type> KEYWORDS = new HashMap<>();
     static {
         KEYWORDS.put("routine", Token.Type.ROUTINE);
@@ -50,15 +52,18 @@ public class Lexer {
         this.input = input;
     }
 
+    // Look at current character without moving
     private char peek() {
         return (pos >= input.length()) ? '\0' : input.charAt(pos);
     }
 
+    // Look at next character
     private char peekNext() {
         int p = pos + 1;
         return (p < input.length()) ? input.charAt(p) : '\0';
     }
 
+    // Move to next character and return it
     private char advance() {
         char c = peek();
         if (c == '\0') return c;
@@ -72,23 +77,27 @@ public class Lexer {
         return c;
     }
 
+    // Check and consume character if it matches
     private boolean match(char expected) {
         if (peek() != expected) return false;
         advance();
         return true;
     }
 
+    // Skip whitespace and comments
     private void skipSpacesAndComments() {
         while (true) {
             boolean consumed = false;
 
+            // Skip whitespace (except newlines)
             while (peek() != '\n' && Character.isWhitespace(peek())) {
                 advance();
                 consumed = true;
             }
 
+            // Skip line comments
             if (peek() == '-' && peekNext() == '-') {
-                advance(); advance(); // съели "--"
+                advance(); advance();
                 while (peek() != '\n' && peek() != '\0') advance();
                 consumed = true;
             }
@@ -97,6 +106,7 @@ public class Lexer {
         }
     }
 
+    // Check if last token allows semicolon insertion
     private boolean lastTokenAllowsSemicolon() {
         if (lastEmitted == null) return false;
         switch (lastEmitted) {
@@ -119,13 +129,16 @@ public class Lexer {
         }
     }
 
+    // Get next token from input
     public Token nextToken() {
+        // Handle pending semicolon from automatic insertion
         if (pendingSemicolon) {
             pendingSemicolon = false;
             lastEmitted = Token.Type.SEMICOLON;
             return new Token(Token.Type.SEMICOLON, ";", line, col);
         }
 
+        // Handle newlines for automatic semicolon insertion
         boolean sawNewline = false;
         while (true) {
             if (peek() == '\n') {
@@ -138,6 +151,7 @@ public class Lexer {
             }
         }
 
+        // Insert semicolon after newline in certain contexts
         if (sawNewline && parenDepth == 0 && bracketDepth == 0 && braceDepth == 0 && lastTokenAllowsSemicolon()) {
             lastEmitted = Token.Type.SEMICOLON;
             return new Token(Token.Type.SEMICOLON, ";", line, col);
@@ -146,13 +160,13 @@ public class Lexer {
         int startCol = col;
         char c = advance();
 
-        // EOF
+        // End of file
         if (c == '\0') {
             lastEmitted = Token.Type.EOF;
             return new Token(Token.Type.EOF, "", line, startCol);
         }
 
-        // Identifier / Keyword / Bool literal
+        // Identifiers, keywords, and boolean literals
         if (Character.isLetter(c) || c == '_') {
             StringBuilder sb = new StringBuilder();
             sb.append(c);
@@ -162,17 +176,19 @@ public class Lexer {
             String lexeme = sb.toString();
             String low = lexeme.toLowerCase(Locale.ROOT);
 
+            // Boolean literals
             if (low.equals("true") || low.equals("false")) {
                 lastEmitted = Token.Type.BOOL_LITERAL;
                 return new Token(Token.Type.BOOL_LITERAL, lexeme, line, startCol);
             }
 
+            // Keywords or identifiers
             Token.Type type = KEYWORDS.getOrDefault(low, Token.Type.IDENTIFIER);
             lastEmitted = type;
             return new Token(type, lexeme, line, startCol);
         }
 
-        // Number: INT or REAL (d+ or d+ '.' d+). '1..10' -> INT, RANGE, INT
+        // Numbers: integers or decimals
         if (Character.isDigit(c)) {
             StringBuilder sb = new StringBuilder();
             sb.append(c);
@@ -180,9 +196,10 @@ public class Lexer {
 
             while (Character.isDigit(peek())) sb.append(advance());
 
+            // Check for decimal point followed by digits
             if (peek() == '.' && Character.isDigit(peekNext())) {
                 isReal = true;
-                sb.append(advance()); // '.'
+                sb.append(advance());
                 while (Character.isDigit(peek())) sb.append(advance());
             }
 
@@ -191,7 +208,7 @@ public class Lexer {
             return new Token(kind, sb.toString(), line, startCol);
         }
 
-        // String literal
+        // String literals
         if (c == '"') {
             StringBuilder sb = new StringBuilder();
             while (peek() != '"' && peek() != '\0') {
@@ -202,20 +219,19 @@ public class Lexer {
             return new Token(Token.Type.STRING_LITERAL, sb.toString(), line, startCol);
         }
 
-        // Operators / delimiters
+        // Operators and delimiters
         switch (c) {
             case '+':
                 lastEmitted = Token.Type.PLUS;
                 return new Token(Token.Type.PLUS, "+", line, startCol);
             case '-':
-                // Стрелку '->' не поддерживаем; лишь минус
                 lastEmitted = Token.Type.MINUS;
                 return new Token(Token.Type.MINUS, "-", line, startCol);
             case '*':
                 lastEmitted = Token.Type.MULTIPLY;
                 return new Token(Token.Type.MULTIPLY, "*", line, startCol);
             case '/':
-                if (match('=')) { // '/=' — not equals
+                if (match('=')) {
                     lastEmitted = Token.Type.NOT_EQUALS;
                     return new Token(Token.Type.NOT_EQUALS, "/=", line, startCol);
                 }
@@ -225,7 +241,7 @@ public class Lexer {
                 lastEmitted = Token.Type.MODULO;
                 return new Token(Token.Type.MODULO, "%", line, startCol);
             case '=':
-                if (match('>')) { // '=>'
+                if (match('>')) {
                     lastEmitted = Token.Type.FAT_ARROW;
                     return new Token(Token.Type.FAT_ARROW, "=>", line, startCol);
                 }
@@ -291,6 +307,7 @@ public class Lexer {
                 return new Token(Token.Type.RBRACE, "}", line, startCol);
         }
 
+        // Unknown character
         lastEmitted = Token.Type.ERROR;
         return new Token(Token.Type.ERROR, String.valueOf(c), line, startCol);
     }

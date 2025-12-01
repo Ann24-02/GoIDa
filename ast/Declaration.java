@@ -1,9 +1,6 @@
 package ast;
 
-
-/**
- * Базовый класс для объявлений
- */
+// Declaration - base class for all declarations
 public abstract class Declaration extends ASTNode {
     public final String name;
     

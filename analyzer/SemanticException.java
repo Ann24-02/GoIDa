@@ -1,9 +1,7 @@
 package analyzer;
 
-/**
- * Semantic analysis exception.
- * Stores the line and column of the error.
- */
+//  Semantic analysis exception.
+//  Stores the line and column of the error.
 public class SemanticException extends RuntimeException {
     private final int line;
     private final int column;

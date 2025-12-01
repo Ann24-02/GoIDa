@@ -1,18 +1,14 @@
--- demonstrates variable and type shadowing in nested scopes
+-- passes an array to a function and uses .size attribute to print it in reverse
+
+routine printReverse(arr : array[] integer) is
+    var i : integer is arr.size
+    while i >= 1 loop
+        print arr[i]
+        i := i - 1
+    end
+end
 
 routine main() is
-    var x : integer is 5
-    type MyType is integer
-
-    if true then
-        var x : real is 3.14 -- shadows outer integer x
-        type MyType is real   -- shadows outer MyType type
-        var y : MyType is x   -- should be type real
-
-        print y -- should print 3.14
-    end
-
-    -- original x and MyType should be visible again here
-    var z : MyType is x
-    print z -- Should print 5
+    var myData : array[4] integer is [10, 20, 30, 40]
+    printReverse(myData)
 end

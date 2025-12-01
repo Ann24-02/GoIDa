@@ -1,8 +1,6 @@
 package ast;
 
-/**
- * Параметр подпрограммы: x : integer
- */
+// Parameter - represents a function parameter with a name and type
 public class Parameter extends ASTNode {
     public final String name;
     public final Type type;
