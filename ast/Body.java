@@ -1,12 +1,7 @@
 package ast;
+import java.util.List;
 
-import java.util.List;     // для списков
-import parser.Token;       // для Token.Type
-
-
-/**
- * Тело подпрограммы или блока: смесь объявлений и инструкций
- */
+// Body contains a list of elements
 public class Body extends ASTNode {
     public final List<ASTNode> elements; // Declaration или Statement
     

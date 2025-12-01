@@ -1,7 +1,7 @@
 package ast;
 import java.util.List;
-import parser.Token;
 
+// PrintStatement - represents a print statement with a list of expressions to print
 public class PrintStatement extends Statement {
     public final List<Expression> expressions;
 

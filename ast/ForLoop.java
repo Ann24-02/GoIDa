@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// ForLoop - represents a for loop with loop variable, range, direction, and body
 public class ForLoop extends Statement {
     public final String loopVariable;
     public final Range range;

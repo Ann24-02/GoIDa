@@ -5,9 +5,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import parser.Lexer;
 import parser.Token;
+
+// Simple lexer tester - shows tokens from source files
 public class LexerTester {
     private static final Pattern DIGITS = Pattern.compile("(\\d+)");
 
+    // Extract numbers from filenames for sorting
     private static int numericKey(Path p) {
         String name = p.getFileName().toString();
         Matcher m = DIGITS.matcher(name);
@@ -17,6 +20,7 @@ public class LexerTester {
         return Integer.MAX_VALUE;
     }
 
+    // Show tokens from a single file
     private static void processFile(Path file) throws IOException {
         if (!Files.isRegularFile(file)) {
             System.err.println("Not a file: " + file.toAbsolutePath());
@@ -35,6 +39,7 @@ public class LexerTester {
         System.out.println();
     }
 
+    // Process all .rout files in a directory
     private static void processDir(Path dir) throws IOException {
         if (!Files.isDirectory(dir)) {
             System.err.println("Not a directory: " + dir.toAbsolutePath());

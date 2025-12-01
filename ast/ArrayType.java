@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// ArrayType - represents an array type with size and element type
 public class ArrayType extends Type {
     public final Expression size;
     public final Type elementType;

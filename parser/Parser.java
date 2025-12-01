@@ -4,10 +4,8 @@ import ast.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Final full recursive-descent parser for the Imperative Language.
- * Supports all features in tests 1–15.
- */
+// Recursive descent parser for the Imperative Language
+// Builds AST from tokens using grammar rules
 public class Parser {
     private final Lexer lexer;
     private Token current;
@@ -30,10 +28,7 @@ public class Parser {
         advance();
     }
 
-    // ================================================================
-    // PROGRAM STRUCTURE
-    // ================================================================
-
+    // Parse entire program
     public Program parseProgram() {
         List<Declaration> decls = new ArrayList<>();
         while (current.type != Token.Type.EOF) {
@@ -43,6 +38,7 @@ public class Parser {
         return new Program(decls, 1, 1);
     }
 
+    // Choose declaration type
     private Declaration parseDeclaration() {
         switch (current.type) {
             case VAR: return parseVariableDeclaration();
@@ -53,10 +49,7 @@ public class Parser {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Declarations
-    // ---------------------------------------------------------------
-
+    // Variable declaration: var name [: type] [is value];
     private VariableDeclaration parseVariableDeclaration() {
         int line = current.line, col = current.column;
         expect(Token.Type.VAR);
@@ -71,6 +64,7 @@ public class Parser {
         return new VariableDeclaration(name, type, init, line, col);
     }
 
+    // Type declaration: type name is type;
     private TypeDeclaration parseTypeDeclaration() {
         int line = current.line, col = current.column;
         expect(Token.Type.TYPE);
@@ -81,6 +75,7 @@ public class Parser {
         return new TypeDeclaration(name, aliased, line, col);
     }
 
+    // Function declaration
     private RoutineDeclaration parseRoutineDeclaration() {
         int line = current.line, col = current.column;
         expect(Token.Type.ROUTINE);
@@ -97,19 +92,21 @@ public class Parser {
         Type returnType = null;
         if (match(Token.Type.COLON)) returnType = parseType();
 
-        // expression-body routine: routine f(x) => expr;
+        // Expression-bodied function
         if (match(Token.Type.FAT_ARROW)) {
             Expression exprBody = parseExpression();
             expect(Token.Type.SEMICOLON);
             return new RoutineDeclaration(name, params, returnType, null, exprBody, line, col);
         }
 
+        // Block-bodied function
         expect(Token.Type.IS);
         Body body = parseBody();
         expect(Token.Type.END);
         return new RoutineDeclaration(name, params, returnType, body, null, line, col);
     }
 
+    // Function parameter: [ref] name : type
     private Parameter parseParameter() {
         int line = current.line, col = current.column;
         boolean isRef = match(Token.Type.REF);
@@ -119,6 +116,7 @@ public class Parser {
         return new Parameter((isRef ? "ref " : "") + name, type, line, col);
     }
 
+    // Code block body
     private Body parseBody() {
         List<ASTNode> elements = new ArrayList<>();
         while (current.type != Token.Type.END && current.type != Token.Type.ELSE) {
@@ -130,10 +128,7 @@ public class Parser {
         return new Body(elements, current.line, current.column);
     }
 
-    // ================================================================
-    // STATEMENTS
-    // ================================================================
-
+    // Choose statement type
     private Statement parseStatement() {
         switch (current.type) {
             case IDENTIFIER: return parseAssignmentOrCall();
@@ -147,11 +142,12 @@ public class Parser {
         }
     }
 
+    // Assignment or function call (both start with identifier)
     private Statement parseAssignmentOrCall() {
         int line = current.line, col = current.column;
         String name = current.lexeme; expect(Token.Type.IDENTIFIER);
 
-        // Routine call
+        // Function call
         if (match(Token.Type.LPAREN)) {
             List<Expression> args = new ArrayList<>();
             if (!match(Token.Type.RPAREN)) {
@@ -163,7 +159,7 @@ public class Parser {
             return new RoutineCall(name, args, line, col);
         }
 
-        // LHS with accesses (arr[i], rec.field)
+        // Assignment with array/field accesses
         List<ModifiablePrimary.Access> accesses = new ArrayList<>();
         while (current.type == Token.Type.LBRACKET || current.type == Token.Type.DOT) {
             if (match(Token.Type.LBRACKET)) {
@@ -182,12 +178,13 @@ public class Parser {
         return new Assignment(new ModifiablePrimary(name, accesses, line, col), expr, line, col);
     }
 
+    // Print statement
     private Statement parsePrint() {
         int line = current.line, col = current.column;
         expect(Token.Type.PRINT);
         List<Expression> exprs = new ArrayList<>();
 
-        // allow both print(x, y) and print x, y
+        // Support print(x, y) and print x, y
         if (match(Token.Type.LPAREN)) {
             if (!match(Token.Type.RPAREN)) {
                 do exprs.add(parseExpression());
@@ -203,6 +200,7 @@ public class Parser {
         return new PrintStatement(exprs, line, col);
     }
 
+    // If statement
     private Statement parseIf() {
         int line = current.line, col = current.column;
         expect(Token.Type.IF);
@@ -215,6 +213,7 @@ public class Parser {
         return new IfStatement(cond, thenBranch, elseBranch, line, col);
     }
 
+    // While loop
     private Statement parseWhile() {
         int line = current.line, col = current.column;
         expect(Token.Type.WHILE);
@@ -225,19 +224,19 @@ public class Parser {
         return new WhileLoop(cond, body, line, col);
     }
 
-        private Statement parseFor() {
+    // For loop (range or for-each)
+    private Statement parseFor() {
         int line = current.line, col = current.column;
         expect(Token.Type.FOR);
         String varName = current.lexeme;
         expect(Token.Type.IDENTIFIER);
         expect(Token.Type.IN);
 
-        // Detect if this is a range or a for-each
         Expression firstExpr = parseExpression();
         Expression secondExpr = null;
         boolean isRange = false;
 
-        if (match(Token.Type.RANGE)) { // 1 .. 10
+        if (match(Token.Type.RANGE)) {
             secondExpr = parseExpression();
             isRange = true;
         }
@@ -250,13 +249,12 @@ public class Parser {
         if (isRange) {
             return new ForLoop(varName, new Range(firstExpr, secondExpr, line, col), reverse, body, line, col);
         } else {
-            // Это for-each loop (for x in array)
-            // Используем Range, где end - это массив, а start = null
+            // For-each loop over array
             return new ForLoop(varName, new Range(null, firstExpr, line, col), reverse, body, line, col);
         }
     }
 
-
+    // Return statement
     private Statement parseReturn() {
         int line = current.line, col = current.column;
         expect(Token.Type.RETURN);
@@ -264,15 +262,12 @@ public class Parser {
         if (current.type != Token.Type.SEMICOLON)
             value = parseExpression();
         expect(Token.Type.SEMICOLON);
-        // Represent return as special RoutineCall node for now
         List<Expression> args = new ArrayList<>();
         if (value != null) args.add(value);
         return new RoutineCall("return", args, line, col);
     }
 
-    // ================================================================
-    // EXPRESSIONS (full precedence + literals)
-    // ================================================================
+    // Expression parsing with operator precedence
 
     private Expression parseExpression() { return parseOr(); }
 
@@ -331,12 +326,14 @@ public class Parser {
     }
 
     private Expression parseFactor() {
+        // Unary operators
         if (current.type == Token.Type.NOT || current.type == Token.Type.MINUS) {
             Token.Type op = current.type; advance();
             Expression operand = parseFactor();
             return new UnaryExpression(op, operand, current.line, current.column);
         }
 
+        // Literals
         switch (current.type) {
             case INT_LITERAL: {
                 int iv = Integer.parseInt(current.lexeme);
@@ -356,7 +353,7 @@ public class Parser {
             }
             case IDENTIFIER: {
                 String name = current.lexeme; advance();
-                // function call or variable/field/array access
+                // Function call
                 if (match(Token.Type.LPAREN)) {
                     List<Expression> args = new ArrayList<>();
                     if (!match(Token.Type.RPAREN)) {
@@ -366,6 +363,7 @@ public class Parser {
                     }
                     return new FunctionCall(name, args, current.line, current.column);
                 }
+                // Variable with array/field accesses
                 List<ModifiablePrimary.Access> accesses = new ArrayList<>();
                 while (current.type == Token.Type.LBRACKET || current.type == Token.Type.DOT) {
                     if (match(Token.Type.LBRACKET)) {
@@ -381,7 +379,7 @@ public class Parser {
                     return new ModifiablePrimary(name, accesses, current.line, current.column);
                 return new Identifier(name, current.line, current.column);
             }
-            case LBRACKET: { // array literal
+            case LBRACKET: { // Array literal [1, 2, 3]
                 int line = current.line, col = current.column;
                 advance();
                 List<Expression> elems = new ArrayList<>();
@@ -392,7 +390,7 @@ public class Parser {
                 }
                 return new FunctionCall("array_literal", elems, line, col);
             }
-            case LBRACE: { // record literal
+            case LBRACE: { // Record literal {x: 1, y: 2}
                 int line = current.line, col = current.column;
                 advance();
                 List<Expression> fields = new ArrayList<>();
@@ -410,7 +408,7 @@ public class Parser {
                 }
                 return new FunctionCall("record_literal", fields, line, col);
             }
-            case LPAREN: {
+            case LPAREN: { // Parenthesized expression
                 advance();
                 Expression expr = parseExpression();
                 expect(Token.Type.RPAREN);
@@ -421,10 +419,7 @@ public class Parser {
         }
     }
 
-    // ================================================================
-    // TYPES
-    // ================================================================
-
+    // Type parsing
     private Type parseType() {
         switch (current.type) {
             case INTEGER: case REAL: case BOOLEAN: case STRING: {

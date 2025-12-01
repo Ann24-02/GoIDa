@@ -1,10 +1,11 @@
-
 import analyzer.*;
 import parser.*;
 import ast.*;
 import java.io.*;
 import java.nio.file.*;
 
+// Test runner for semantic analyzer and optimizer
+// Tests a single source file and shows results
 public class AnalyzerTester {
     
     public static void main(String[] args) {
@@ -25,9 +26,9 @@ public class AnalyzerTester {
     }
     
     private static void testFile(String filename, boolean updateMode) throws Exception {
-        System.out.println("=== Testing: " + filename + " ===");
+        System.out.println("== Testing: " + filename + " ==");
         
-        // Read source code
+        // Read source code from file
         String source = new String(Files.readAllBytes(Paths.get(filename)));
         
         // Parse the program
@@ -35,41 +36,41 @@ public class AnalyzerTester {
         Parser parser = new Parser(lexer);
         Program program = parser.parseProgram();
         
-        // Test Semantic Analysis
+        // Run semantic analysis
         testSemanticAnalysis(program, filename, updateMode);
         
-        // Test Optimization
+        // Run optimization
         testOptimization(program, filename, updateMode);
     }
     
     private static void testSemanticAnalysis(Program program, String filename, boolean updateMode) {
-        System.out.println("\n--- Semantic Analysis ---");
+        System.out.println("\n-- Semantic Analysis --");
         
         SemanticAnalyzer analyzer = new SemanticAnalyzer();
         
         try {
             analyzer.analyze(program);
-            System.out.println("✓ Semantic analysis passed");
+            System.out.println(" Semantic analysis passed");
             
-            // Show warnings
+            // Print any warnings
             for (String warning : analyzer.getWarnings()) {
                 System.out.println("  Warning: " + warning);
             }
             
         } catch (SemanticException e) {
-            System.out.println("✗ Semantic error: " + e.getMessage());
+            System.out.println(" Semantic error: " + e.getMessage());
         }
     }
     
     private static void testOptimization(Program program, String filename, boolean updateMode) {
-        System.out.println("\n--- Optimization ---");
+        System.out.println("\n-- Optimization --");
         
         OptimizationEngine optimizer = new OptimizationEngine();
         Program optimized = optimizer.optimize(program);
         
-        System.out.println("✓ Optimization completed: " + optimizer.getOptimizationCount() + " optimizations applied");
+        System.out.println(" Optimization completed: " + optimizer.getOptimizationCount() + " optimizations applied");
         
-        // Print optimized AST structure
+        // Show AST size comparison
         printASTComparison(program, optimized);
     }
     
@@ -77,15 +78,13 @@ public class AnalyzerTester {
         System.out.println("\nOriginal AST size: " + countNodes(original));
         System.out.println("Optimized AST size: " + countNodes(optimized));
         
-        // Show specific optimizations if any
+        // Indicate if changes were made
         if (countNodes(original) != countNodes(optimized)) {
-            System.out.println("✓ AST was modified by optimizations");
+            System.out.println(" AST was modified by optimizations");
         }
     }
     
     private static int countNodes(ASTNode node) {
-        // Simple node counter for demonstration
-        // In real implementation, you'd want a proper visitor
-        return 1; // Simplified
+        return 1; // Simplified node counter
     }
 }

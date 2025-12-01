@@ -1,7 +1,7 @@
 package ast;
 import java.util.List;
-import parser.Token;
 
+// RecordType - represents a record type with a list of field declarations
 public class RecordType extends Type {
     public final List<VariableDeclaration> fields;
 

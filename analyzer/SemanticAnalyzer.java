@@ -3,20 +3,8 @@ package analyzer;
 import ast.*;
 import java.util.*;
 
-/**
- * SemanticAnalyzer - runs semantic checks over the AST.
- *
- * Non-modifying checks included:
- * 1) Declarations before usage (variables, routines, types must exist before use)
- * 2) Correct keyword usage (return only inside routines)
- * 3) Basic type checks
- * 4) Unused variable detection (produces warnings)
- * 5) Arity check for routine calls (number of args must match)
- *
- * Note: this analyzer collects multiple errors (when possible) and then
- * throws the first one to keep a simple external contract. You can fetch
- * all collected errors via getErrors().
- */
+// Semantic analyzer that checks for declaration errors and type issues.
+// Finds problems before code generation.
 public class SemanticAnalyzer {
 
     private final SemanticContext context;
@@ -26,20 +14,14 @@ public class SemanticAnalyzer {
     public SemanticAnalyzer() {
         this.context = new SemanticContext();
     }
+    
     public SemanticContext getSemanticContext() {
-    return context;
-}
-    /**
-     * Run semantic analysis in two passes:
-     * Pass 1: collect only global declarations (vars, routines, types).
-     * Pass 2: check each top-level declaration and its body in order.
-     *
-     * We collect errors across both passes. After both passes, if any
-     * errors were collected, we throw the first one, but you can inspect
-     * the rest with getErrors().
-     */
+        return context;
+    }
+
+    // Main analysis in two passes
     public void analyze(Program program) {
-        // Pass 1: collect ONLY globals
+        // First pass: collect global declarations
         for (Declaration decl : program.declarations) {
             try {
                 collectGlobalDeclaration(decl);
@@ -48,7 +30,7 @@ public class SemanticAnalyzer {
             }
         }
 
-        // Pass 2: check top-level decls
+        // Second pass: check declarations and bodies
         for (Declaration decl : program.declarations) {
             try {
                 checkDeclaration(decl);
@@ -57,10 +39,10 @@ public class SemanticAnalyzer {
             }
         }
 
-        // Add warnings
+        // Add warnings for unused variables
         addUnusedWarnings(context.getUnusedVariables());
 
-        // If there are errors, throw the first one to fail the file
+        // Throw first error if any found
         if (!errors.isEmpty()) {
             throw errors.get(0);
         }
@@ -70,47 +52,41 @@ public class SemanticAnalyzer {
         return new ArrayList<>(errors);
     }
 
-   // Pass 1: collect global declarations
+    // Collect global declarations (variables, functions, types)
     private void collectGlobalDeclaration(Declaration decl) {
         if (decl instanceof VariableDeclaration v) {
-            // global variable becomes visible
             context.declareVariable(v.name, v.type, v.line, v.column);
-
         } else if (decl instanceof RoutineDeclaration r) {
             context.declareRoutine(r.name, r.parameters, r.returnType, r.line, r.column);
-
         } else if (decl instanceof TypeDeclaration t) {
             context.declareType(t.name, t.aliasedType, t.line, t.column);
         }
     }
 
-    // Pass 2: check declarations and bodies
+    // Check declarations and their bodies
     private void checkDeclaration(Declaration decl) {
         if (decl instanceof VariableDeclaration v) {
             if (v.initializer != null) {
                 checkExpression(v.initializer);
             }
-
         } else if (decl instanceof RoutineDeclaration r) {
             context.enterRoutine(r);
-            context.enterScope();  // routine's local scope
+            context.enterScope();
 
-            // Parameters are visible inside the body
+            // Add parameters to current scope
             for (Parameter p : r.parameters) {
                 try {
-                    // parameter names may be prefixed with "ref "; strip it for declaration
                     String pname = p.name;
                     if (pname.startsWith("ref ")) {
                         pname = pname.substring(4);
                     }
                     context.declareVariable(pname, p.type, p.line, p.column);
                 } catch (SemanticException e) {
-                    // If duplicate parameter names exist, collect and continue
                     errors.add(e);
                 }
             }
 
-            // Check body in order
+            // Check function body
             if (r.body != null) {
                 checkBody(r.body);
             } else if (r.expressionBody != null) {
@@ -122,55 +98,46 @@ public class SemanticAnalyzer {
         }
     }
 
+    // Check a block of code
     private void checkBody(Body body) {
         if (body == null) return;
 
         for (ASTNode element : body.elements) {
             if (element instanceof VariableDeclaration v) {
-                // 1) check initializer first (can only use earlier-declared names)
                 if (v.initializer != null) {
                     checkExpression(v.initializer);
                 }
-                // 2) then declare the variable (visible for later lines)
                 context.declareVariable(v.name, v.type, v.line, v.column);
-
             } else if (element instanceof TypeDeclaration t) {
-                // type becomes visible
                 context.declareType(t.name, t.aliasedType, t.line, t.column);
-
             } else if (element instanceof Statement s) {
                 checkStatement(s);
-
             } else if (element instanceof Declaration d) {
                 checkDeclaration(d);
             }
         }
     }
 
+    // Check different statement types
     private void checkStatement(Statement stmt) {
         if (stmt instanceof Assignment a) {
             checkAssignment(a);
-
         } else if (stmt instanceof RoutineCall rc) {
             checkRoutineCall(rc);
-
         } else if (stmt instanceof PrintStatement ps) {
             checkPrintStatement(ps);
-
         } else if (stmt instanceof IfStatement ifs) {
             checkIfStatement(ifs);
-
         } else if (stmt instanceof WhileLoop wl) {
             checkWhileLoop(wl);
-
         } else if (stmt instanceof ForLoop fl) {
             checkForLoop(fl);
         }
     }
 
-    // Routine call checks (return, existence, arity)
+    // Check function calls including 'return'
     private void checkRoutineCall(RoutineCall rc) {
-        // 1) 'return' only inside routines
+        // Check 'return' is inside a function
         if ("return".equals(rc.routineName)) {
             if (!context.isInRoutine()) {
                 throw new SemanticException(
@@ -178,12 +145,12 @@ public class SemanticAnalyzer {
                     rc.line, rc.column
                 );
             }
-            // No arity check for 'return'
         }
-        // 2) allow special built-ins like "for_each"
+        // Built-in functions like for_each are allowed
         else if (rc.routineName != null && rc.routineName.contains("for_each")) {
+            // Skip checking
         }
-        // 3) normal routine: must exist and have correct arity
+        // Check regular function calls
         else {
             if (!context.isDeclaredRoutine(rc.routineName)) {
                 throw new SemanticException(
@@ -203,19 +170,16 @@ public class SemanticAnalyzer {
             }
         }
 
-        // 4) check each argument expression
+        // Check all arguments
         for (Expression arg : rc.arguments) {
             checkExpression(arg);
         }
     }
 
-
-    // Declarations-before-usage and basic checks inside expressions
+    // Check variable assignments
     private void checkAssignment(Assignment a) {
-        // Check right-hand side
         checkExpression(a.value);
 
-        // Check left-hand side target
         if (a.target instanceof ModifiablePrimary mp) {
             if (!context.isDeclaredVariable(mp.baseName)) {
                 throw new SemanticException(
@@ -225,7 +189,6 @@ public class SemanticAnalyzer {
             }
             context.markVariableUsed(mp.baseName);
 
-            // Check any index expressions
             for (ModifiablePrimary.Access acc : mp.accesses) {
                 if (acc.index != null) {
                     checkExpression(acc.index);
@@ -234,6 +197,7 @@ public class SemanticAnalyzer {
         }
     }
 
+    // Check expressions for undeclared variables
     private void checkExpression(Expression expr) {
         if (expr == null) return;
 
@@ -245,16 +209,13 @@ public class SemanticAnalyzer {
                 );
             }
             context.markVariableUsed(id.name);
-
         } else if (expr instanceof BinaryExpression be) {
             checkExpression(be.left);
             checkExpression(be.right);
-
         } else if (expr instanceof UnaryExpression ue) {
             checkExpression(ue.operand);
-
         } else if (expr instanceof FunctionCall fc) {
-            // If this matches a declared routine, enforce arity too
+            // Check function arity if it's a known routine
             if (fc.functionName != null && context.isDeclaredRoutine(fc.functionName)) {
                 SemanticContext.RoutineInfo info = context.getRoutineInfo(fc.functionName);
                 int expected = (info.params != null ? info.params.size() : 0);
@@ -267,11 +228,9 @@ public class SemanticAnalyzer {
                     );
                 }
             }
-            // Check all argument expressions
             for (Expression arg : fc.arguments) {
                 checkExpression(arg);
             }
-
         } else if (expr instanceof ModifiablePrimary mp) {
             if (!context.isDeclaredVariable(mp.baseName)) {
                 throw new SemanticException(
@@ -289,13 +248,14 @@ public class SemanticAnalyzer {
         }
     }
 
-    // Other statements
+    // Check print statements
     private void checkPrintStatement(PrintStatement ps) {
         for (Expression expr : ps.expressions) {
             checkExpression(expr);
         }
     }
 
+    // Check if statements
     private void checkIfStatement(IfStatement ifs) {
         checkExpression(ifs.condition);
         if (ifs.thenBranch != null) {
@@ -310,6 +270,7 @@ public class SemanticAnalyzer {
         }
     }
 
+    // Check while loops
     private void checkWhileLoop(WhileLoop wl) {
         checkExpression(wl.condition);
         context.enterLoop();
@@ -321,17 +282,16 @@ public class SemanticAnalyzer {
         context.exitLoop();
     }
 
+    // Check for loops
     private void checkForLoop(ForLoop fl) {
         context.enterLoop();
         context.enterScope();
 
-        // Range bounds are checked before the loop var exists
         if (fl.range != null) {
             checkExpression(fl.range.start);
             checkExpression(fl.range.end);
         }
 
-        // Declare the loop variable (visible in the loop body)
         context.declareVariable(fl.loopVariable, null, fl.line, fl.column);
 
         if (fl.body != null) {
@@ -342,8 +302,7 @@ public class SemanticAnalyzer {
         context.exitLoop();
     }
 
-
-    // Warnings
+    // Warning handling
     public List<String> getWarnings() {
         return new ArrayList<>(warnings);
     }

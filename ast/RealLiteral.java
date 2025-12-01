@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// RealLiteral - represents a real number literal in expressions
 public class RealLiteral extends Expression {
     public final double value;
 
