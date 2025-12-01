@@ -1,0 +1,18 @@
+[33m2e3b7ac[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfix-wasm[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33m0b166dc[m[33m ([m[1;31morigin/fix-wasm[m[33m)[m HEAD@{1}: commit: fixing wasm
+[33m2e3b7ac[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfix-wasm[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{2}: checkout: moving from main to fix-wasm
+[33m2e3b7ac[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfix-wasm[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{3}: pull: Fast-forward
+[33ma68f62c[m HEAD@{4}: commit: feat:created compiler targeting wasm
+[33mff9699f[m HEAD@{5}: pull: Fast-forward
+[33mdd8df9f[m HEAD@{6}: commit: feat: semantic analyzer
+[33md606733[m HEAD@{7}: commit: feat: added semantic analysis
+[33m5197049[m HEAD@{8}: pull: Fast-forward
+[33m6abf643[m HEAD@{9}: commit: add ast classes
+[33ma1fd913[m HEAD@{10}: pull --rebase (finish): returning to refs/heads/main
+[33ma1fd913[m HEAD@{11}: pull --rebase (start): checkout a1fd913ac11871aa2717c88841621414bf36a91a
+[33m5f2cfdf[m HEAD@{12}: pull: Fast-forward
+[33m3b84662[m HEAD@{13}: commit: added TestLexer
+[33mb21f8c3[m HEAD@{14}: pull origin main: Fast-forward
+[33m62bb262[m HEAD@{15}: commit: lexer: adding class Token
+[33m16331bb[m HEAD@{16}: commit: adding tests 11-15
+[33md89025f[m HEAD@{17}: clone: from https://github.com/Ann24-02/GoIDa

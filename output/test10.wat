@@ -10,24 +10,26 @@
   (func $sum (param $arr i32) (result i32)
     (local $s i32)
     (local $x i32)
+    (local $x_idx_7_5 i32)
+    (local $temp_size_7_5 i32)
     i32.const 0
     local.set $s
-    (local $x_idx i32)
-    (local $temp_size_1 i32)
     local.get $arr
     i32.load
-    local.set $temp_size_1
+    local.set $temp_size_7_5
     i32.const 0
-    local.set $x_idx
+    local.set $x_idx_7_5
     block $loop_0_end
     loop $loop_0_start
-    local.get $x_idx
-    local.get $temp_size_1
+    local.get $x_idx_7_5
+    local.get $temp_size_7_5
     i32.lt_s
     i32.eqz
     br_if $loop_0_end
     local.get $arr
-    local.get $x_idx
+    i32.const 4
+    i32.add
+    local.get $x_idx_7_5
     i32.const 4
     i32.mul
     i32.add
@@ -37,10 +39,10 @@
     local.get $x
 i32.add
     local.set $s
-    local.get $x_idx
+    local.get $x_idx_7_5
     i32.const 1
     i32.add
-    local.set $x_idx
+    local.set $x_idx_7_5
     br $loop_0_start
     end
     end
