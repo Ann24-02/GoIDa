@@ -10,6 +10,7 @@
   (func $main
     (local $a1 i32)
     (local $a2 i32)
+    (local $temp i32)
     i32.const 256
     i32.const 3
     i32.store
@@ -27,18 +28,26 @@
     local.get $a1
     local.set $a2
     i32.const 99
+    local.set $temp
     local.get $a1
     i32.const 2
+    i32.const 1
+    i32.sub
     i32.const 4
     i32.mul
+    i32.const 4
     i32.add
+    i32.add
+    local.get $temp
     i32.store
     local.get $a2
-    i32.const 4
-    i32.add
     i32.const 2
+    i32.const 1
+    i32.sub
     i32.const 4
     i32.mul
+    i32.const 4
+    i32.add
     i32.add
     i32.load
     call $printInt

@@ -13,6 +13,7 @@
     (local $c i32)
     (local $d i32)
     (local $result i32)
+    (local $temp i32)
     i32.const 10
     local.set $a
     i32.const 20

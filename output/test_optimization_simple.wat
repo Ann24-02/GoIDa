@@ -27,6 +27,7 @@
   (global $d (mut i32) (i32.const 8))
 
   (func $test_dead_code
+    (local $temp i32)
     i32.const 65
     call $printString
     call $printNewline
@@ -34,6 +35,7 @@
   )
 
   (func $test_if_simple
+    (local $temp i32)
     i32.const 1
     if
     i32.const 0
@@ -44,6 +46,7 @@
 
   (func $test_combined
     (local $x i32)
+    (local $temp i32)
     i32.const 20
     local.set $x
     local.get $x
@@ -61,6 +64,7 @@ i32.gt_s
   )
 
   (func $main
+    (local $temp i32)
     i32.const 116
     call $printString
     call $printNewline

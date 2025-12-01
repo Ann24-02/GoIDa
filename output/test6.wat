@@ -11,6 +11,7 @@
     (local $r f64)
     (local $i i32)
     (local $b i32)
+    (local $temp i32)
     f64.const 3.6
     local.set $r
     i32.const 0

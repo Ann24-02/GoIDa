@@ -16,6 +16,7 @@
 
   (func $calculate (param $a i32) (param $b i32)
     (local $result i32)
+    (local $temp i32)
     local.get $a
     local.get $b
 i32.add
@@ -30,6 +31,7 @@ i32.add
   (func $main
     (local $total i32)
     (local $i i32)
+    (local $temp i32)
     global.get $x
     global.get $y
     call $calculate

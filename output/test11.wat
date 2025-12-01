@@ -9,6 +9,7 @@
 
   (func $main
     (local $p i32)
+    (local $temp i32)
     i32.const 256
     i32.const 0
     i32.store
@@ -18,23 +19,14 @@
     i32.const 256
     local.set $p
     local.get $p
-    i32.const 4
-    i32.add
     i32.load
     i32.const 1
 i32.add
+    local.set $p
     local.get $p
-    i32.const 4
-    i32.add
-    i32.store
-    local.get $p
-    i32.const 0
-    i32.add
     i32.load
     call $printInt
     local.get $p
-    i32.const 4
-    i32.add
     i32.load
     call $printInt
     call $printNewline

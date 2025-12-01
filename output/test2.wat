@@ -11,6 +11,7 @@
     (local $x i32)
     (local $y i32)
     (local $z i32)
+    (local $temp i32)
     i32.const 5
     local.set $x
     i32.const 3

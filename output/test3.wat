@@ -9,6 +9,7 @@
 
   (func $main
     (local $a i32)
+    (local $temp i32)
     i32.const 10
     local.set $a
     local.get $a

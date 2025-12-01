@@ -1,0 +1,14 @@
+-- passes an array to a function and uses .size attribute to print it in reverse
+
+routine printReverse(arr : array[] integer) is
+    var i : integer is arr.size
+    while i >= 1 loop
+        print arr[i]
+        i := i - 1
+    end
+end
+
+routine main() is
+    var myData : array[4] integer is [10, 20, 30, 40]
+    printReverse(myData)
+end

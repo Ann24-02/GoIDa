@@ -8,12 +8,14 @@
   (export "memory" (memory $memory))
 
   (func $add (param $a i32) (param $b i32) (result i32)
+    (local $temp i32)
     local.get $a
     local.get $b
 i32.add
   )
 
   (func $is_even (param $x i32) (result i32)
+    (local $temp i32)
     local.get $x
     i32.const 2
     i32.rem_s
@@ -23,6 +25,7 @@ i32.eq
 
   (func $main
     (local $s i32)
+    (local $temp i32)
     i32.const 7
     i32.const 5
     call $add

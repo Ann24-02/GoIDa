@@ -15,6 +15,7 @@
     (local $acc i32)
     (local $n i32)
     (local $i i32)
+    (local $temp i32)
     i32.const 3
     local.set $first
     i32.const 6

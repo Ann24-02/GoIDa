@@ -8,6 +8,7 @@
   (export "memory" (memory $memory))
 
   (func $main
+    (local $temp i32)
     i32.const 42
     call $printInt
     call $printNewline

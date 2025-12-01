@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 echo "🔨 Compiling ALL .rout tests to WebAssembly"
@@ -9,6 +8,17 @@ OUTPUT_DIR="output"
 mkdir -p $OUTPUT_DIR
 
 echo "📁 Output directory: $OUTPUT_DIR/"
+echo ""
+
+# Compile Java sources first
+echo "📦 Compiling Java sources..."
+javac -d out analyzer/*.java ast/*.java parser/*.java wasm/*.java
+
+if [ $? -ne 0 ]; then
+    echo "❌ Java compilation failed!"
+    exit 1
+fi
+echo "✅ Java sources compiled successfully"
 echo ""
 
 # Counter for success/failure
