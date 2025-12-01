@@ -1,7 +1,6 @@
 package ast;
 
-import parser.Token;
-
+// VariableDeclaration - represents a variable declaration with type and optional initializer
 public class VariableDeclaration extends Declaration {
     public final Type type;
     public final Expression initializer;

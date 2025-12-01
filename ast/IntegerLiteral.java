@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// IntegerLiteral - represents an integer literal in expressions
 public class IntegerLiteral extends Expression {
     public final int value;
 

@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// Assignment - represents an assignment statement with a target and value
 public class Assignment extends Statement {
     public final ModifiablePrimary target;
     public final Expression value;

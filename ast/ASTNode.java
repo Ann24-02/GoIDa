@@ -1,9 +1,6 @@
-
 package ast;
 
-/**
- * Базовый класс для всех узлов AST
- */
+// ASTNode - base class for all AST nodes
 public abstract class ASTNode {
     public final int line;
     public final int column;

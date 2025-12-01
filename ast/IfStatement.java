@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// IfStatement - represents an if statement with condition, then branch, and else branch
 public class IfStatement extends Statement {
     public final Expression condition;
     public final Body thenBranch;

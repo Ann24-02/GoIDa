@@ -4,14 +4,8 @@ import ast.*;
 import java.util.*;
 import parser.Token;
 
-/**
- * OptimizationEngine - does AST optimizations.
- *
- * Optimizations (modifying):
- * 1. Constant Expression Simplification — e.g., 5 + 3 -> 8, 3 < 5 -> true
- * 2. Dead Code Elimination — remove code after 'return'
- * 3. If Simplification — simplify 'if (true/false)'
- */
+// Optimization engine for simplifying the AST before code generation.
+// Performs constant folding and dead code elimination.
 public class OptimizationEngine {
 
     private int optimizationCount = 0;
@@ -33,7 +27,7 @@ public class OptimizationEngine {
         return new Program(optimized, program.line, program.column);
     }
 
-    // Declaration Optimization
+    // Optimize variable and function declarations
     private Declaration optimizeDeclaration(Declaration decl) {
         if (decl instanceof VariableDeclaration v) {
             if (v.initializer != null) {
@@ -61,51 +55,50 @@ public class OptimizationEngine {
             return decl;
         }
         else if (decl instanceof TypeDeclaration t) {
-            // Types are not optimized
             return decl;
         }
 
         return decl;
     }
 
-    // Body Optimization
+    // Optimize a block of code
     private Body optimizeBody(Body body) {
-    if (body == null) return null; // как и раньше
-    List<ASTNode> elements = body.elements;
-    List<ASTNode> optimized = new ArrayList<>();
-    boolean changed = false;
+        if (body == null) return null;
+        List<ASTNode> elements = body.elements;
+        List<ASTNode> optimized = new ArrayList<>();
+        boolean changed = false;
 
-    for (int i = 0; i < elements.size(); i++) {
-        ASTNode elem = elements.get(i);
-        ASTNode optElem;
-        if (elem instanceof Declaration d) {
-            optElem = optimizeDeclaration(d);
-        } else if (elem instanceof Statement s) {
-            optElem = optimizeStatement(s);
-        } else {
-            optElem = elem;
-        }
-
-        if (optElem != elem) changed = true;       // заметить замену
-        if (optElem != null) optimized.add(optElem);
-        else changed = true;                        // узел удалён (например, if(false))
-
-        // DCE: всё после return — недостижимо
-        if (optElem instanceof RoutineCall rc && "return".equals(rc.routineName)) {
-            int removed = elements.size() - i - 1;
-            if (removed > 0) {
-                changed = true;
-                System.out.println("  [Opt] Dead code elimination: removed " + removed + " statements");
+        for (int i = 0; i < elements.size(); i++) {
+            ASTNode elem = elements.get(i);
+            ASTNode optElem;
+            if (elem instanceof Declaration d) {
+                optElem = optimizeDeclaration(d);
+            } else if (elem instanceof Statement s) {
+                optElem = optimizeStatement(s);
+            } else {
+                optElem = elem;
             }
-            break;
+
+            if (optElem != elem) changed = true;
+            if (optElem != null) optimized.add(optElem);
+            else changed = true;
+
+            // Remove unreachable code after return
+            if (optElem instanceof RoutineCall rc && "return".equals(rc.routineName)) {
+                int removed = elements.size() - i - 1;
+                if (removed > 0) {
+                    changed = true;
+                    System.out.println("  [Opt] Dead code elimination: removed " + removed + " statements");
+                }
+                break;
+            }
         }
+
+        if (!changed) return body;
+        return new Body(optimized, body.line, body.column);
     }
 
-    if (!changed) return body;                     // ничего не поменялось
-    return new Body(optimized, body.line, body.column); // вернуть новый Body
-    }
-
-    // Statement Optimization
+    // Optimize statements like assignments, loops, and conditionals
     private Statement optimizeStatement(Statement stmt) {
         if (stmt instanceof Assignment a) {
             Expression optValue = optimizeExpression(a.value);
@@ -115,7 +108,7 @@ public class OptimizationEngine {
             return stmt;
         }
         else if (stmt instanceof RoutineCall rc) {
-            return stmt; // nothing to do for plain calls
+            return stmt;
         }
         else if (stmt instanceof PrintStatement ps) {
             List<Expression> optimized = new ArrayList<>();
@@ -155,27 +148,26 @@ public class OptimizationEngine {
         return stmt;
     }
 
-    // If Simplification
+    // Simplify if-statements with constant conditions
     private Statement optimizeIfStatement(IfStatement ifs) {
         Expression optCond = optimizeExpression(ifs.condition);
         Body optThen = optimizeBody(ifs.thenBranch);
         Body optElse = ifs.elseBranch != null ? optimizeBody(ifs.elseBranch) : null;
 
-        // If the condition is a boolean constant, simplify
+        // Simplify if the condition is a boolean constant
         if (optCond instanceof BooleanLiteral bl) {
             optimizationCount++;
             if (bl.value) {
-                // if (true) keep only 'then'
+                // Keep only then-branch
                 System.out.println("  [Opt] If simplification: if(true) - removed else branch");
                 return new IfStatement(optCond, optThen, null, ifs.line, ifs.column);
             } else {
-                // if (false) keep only 'else' (if it exists), or remove whole if
+                // Keep only else-branch or remove entire if
                 if (optElse != null) {
                     System.out.println("  [Opt] If simplification: if(false) - using else branch");
                     return new IfStatement(optCond, optElse, null, ifs.line, ifs.column);
                 } else {
                     System.out.println("  [Opt] If simplification: if(false) with no else - removed");
-                    // return null to remove the whole 'if' statement
                     return null;
                 }
             }
@@ -188,7 +180,7 @@ public class OptimizationEngine {
         return ifs;
     }
 
-    // Expression Optimization
+    // Optimize expressions like math operations and function calls
     private Expression optimizeExpression(Expression expr) {
         if (expr == null) return null;
 
@@ -212,7 +204,7 @@ public class OptimizationEngine {
             return fc;
         }
         else if (expr instanceof ModifiablePrimary mp) {
-            // Optimize index expressions inside the chain
+            // Optimize array indices if present
             List<ModifiablePrimary.Access> optimized = new ArrayList<>();
             boolean changed = false;
             for (ModifiablePrimary.Access acc : mp.accesses) {
@@ -230,16 +222,15 @@ public class OptimizationEngine {
             return mp;
         }
 
-        // Literals and Identifiers are left as is
         return expr;
     }
 
-    // Constant Expression Simplification
+    // Simplify binary expressions with constant values
     private Expression optimizeBinaryExpression(BinaryExpression be) {
         Expression left = optimizeExpression(be.left);
         Expression right = optimizeExpression(be.right);
 
-        // If both sides are constants, try to compute the result now
+        // Compute result if both sides are constants
         if (isConstant(left) && isConstant(right)) {
             Object leftVal = evaluateConstant(left);
             Object rightVal = evaluateConstant(right);
@@ -270,10 +261,11 @@ public class OptimizationEngine {
         return be;
     }
 
-    // Unary optimization
+    // Simplify unary operations like -(-x) and !boolean
     private Expression optimizeUnaryExpression(UnaryExpression ue) {
         Expression operand = optimizeExpression(ue.operand);
 
+        // Remove double negation
         if (ue.operator == Token.Type.MINUS && operand instanceof UnaryExpression uo) {
             if (uo.operator == Token.Type.MINUS) {
                 optimizationCount++;
@@ -282,7 +274,7 @@ public class OptimizationEngine {
             }
         }
 
-        // !true -> false, !false -> true
+        // Simplify boolean negation
         if (ue.operator == Token.Type.NOT && operand instanceof BooleanLiteral bl) {
             optimizationCount++;
             return new BooleanLiteral(!bl.value, ue.line, ue.column);
@@ -295,7 +287,7 @@ public class OptimizationEngine {
         return ue;
     }
 
-    // Helpers for constant evaluation
+    // Check if expression is a constant value
     private boolean isConstant(Expression expr) {
         return expr instanceof IntegerLiteral ||
                expr instanceof RealLiteral ||
@@ -303,6 +295,7 @@ public class OptimizationEngine {
                expr instanceof StringLiteral;
     }
 
+    // Extract value from constant expression
     private Object evaluateConstant(Expression expr) {
         if (expr instanceof IntegerLiteral il) return il.value;
         if (expr instanceof RealLiteral rl) return rl.value;
@@ -311,8 +304,9 @@ public class OptimizationEngine {
         return null;
     }
 
+    // Compute result of binary operation on constants
     private Object evaluateBinaryOp(Object left, Object right, Token.Type op) {
-        // Integer ops
+        // Integer operations
         if (left instanceof Integer && right instanceof Integer) {
             int l = (Integer) left;
             int r = (Integer) right;
@@ -335,7 +329,7 @@ public class OptimizationEngine {
             };
         }
 
-        // Boolean ops
+        // Boolean operations
         if (left instanceof Boolean && right instanceof Boolean) {
             boolean l = (Boolean) left;
             boolean r = (Boolean) right;
@@ -349,7 +343,7 @@ public class OptimizationEngine {
             };
         }
 
-        // Double (real) ops, also support mixing int and double
+        // Real number operations (supports int/double mixing)
         if ((left instanceof Double || left instanceof Integer) &&
             (right instanceof Double || right instanceof Integer)) {
             double l = ((Number) left).doubleValue();

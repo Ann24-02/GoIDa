@@ -5,13 +5,8 @@ import ast.*;
 import java.io.IOException;
 import java.nio.file.*;
 
-/**
- * Parser runner with semantic analysis and optimization.
- * - If a file path is given: parses that file.
- * - If no args: parses all .rout files under "tests/".
- * - Runs semantic analysis and prints all collected errors (first shown as primary).
- * - Runs optimizer only if semantics passed.
- */
+// Main compiler entry point
+// Parses files, runs semantic checks, and performs optimizations
 public class Main {
 
     public static void main(String[] args) throws Exception {
@@ -42,7 +37,7 @@ public class Main {
 
     private static void parseAndAnalyze(Path path) throws IOException {
         System.out.println("\n" + "=".repeat(70));
-        System.out.println("=== Parsing: " + path.getFileName() + " ===");
+        System.out.println("== Parsing: " + path.getFileName() + " ===");
         System.out.println("=".repeat(70));
 
         String src = Files.readString(path);
@@ -50,32 +45,28 @@ public class Main {
         Parser parser = new Parser(lexer);
 
         Program program = parser.parseProgram();
-        System.out.println("✓ Parsing successful. AST:");
+        System.out.println(" Parsing successful. AST:");
         printNode(program, 0);
 
-        // ================================================================
-        // SEMANTIC ANALYSIS
-        // ================================================================
-        System.out.println("\n--- Semantic Analysis ---");
+        // Semantic analysis
+        System.out.println("\n-- Semantic Analysis --");
         SemanticAnalyzer analyzer = new SemanticAnalyzer();
         boolean semanticOk = true;
 
         try {
             analyzer.analyze(program);
-            System.out.println("✓ Semantic analysis passed");
+            System.out.println(" Semantic analysis passed");
 
             if (!analyzer.getWarnings().isEmpty()) {
-                System.out.println("⚠ Warnings:");
+                System.out.println(" Warnings:");
                 for (String warning : analyzer.getWarnings()) {
                     System.out.println("  - " + warning);
                 }
             }
         } catch (SemanticException e) {
             semanticOk = false;
-            // Show the primary error (the one thrown)
-            System.out.println("X Semantic error: " + e.getMessage());
+            System.out.println(" Semantic error: " + e.getMessage());
 
-            // If there are more collected errors, print them too
             var all = analyzer.getErrors();
             if (all.size() > 1) {
                 System.out.println("… plus " + (all.size() - 1) + " more error(s):");
@@ -85,28 +76,26 @@ public class Main {
             }
         }
 
-        // ================================================================
-        // OPTIMIZATION (only if semantics passed)
-        // ================================================================
+        // Only optimize if semantics passed
         if (!semanticOk) {
-            return; // stop for this file if semantics failed
+            return;
         }
 
-        System.out.println("\n--- Optimization ---");
+        System.out.println("\n-- Optimization --");
         OptimizationEngine optimizer = new OptimizationEngine();
         Program optimized = optimizer.optimize(program);
 
         if (optimizer.getOptimizationCount() > 0) {
-            System.out.println("✓ Optimized AST:");
+            System.out.println(" Optimized AST:");
             printNode(optimized, 0);
         } else {
             System.out.println("No optimizations applied");
         }
 
-        System.out.println("\n✓ Processing complete");
+        System.out.println("\n Processing complete");
     }
 
-    // AST Pretty Printer
+    // Pretty print AST structure
     private static void printNode(Object node, int indent) {
         if (node == null) {
             printIndent(indent);
@@ -116,25 +105,22 @@ public class Main {
 
         printIndent(indent);
         System.out.println(node.getClass().getSimpleName());
+        
         if (node instanceof Program p) {
             for (Declaration d : p.declarations)
                 printNode(d, indent + 2);
-
         } else if (node instanceof Body b) {
             for (ASTNode e : b.elements)
                 printNode(e, indent + 2);
-
         } else if (node instanceof VariableDeclaration v) {
             printIndent(indent + 2);
             System.out.println("name = " + v.name);
             printNode(v.type, indent + 2);
             printNode(v.initializer, indent + 2);
-
         } else if (node instanceof TypeDeclaration t) {
             printIndent(indent + 2);
             System.out.println("name = " + t.name);
             printNode(t.aliasedType, indent + 2);
-
         } else if (node instanceof RoutineDeclaration r) {
             printIndent(indent + 2);
             System.out.println("name = " + r.name);
@@ -147,7 +133,6 @@ public class Main {
                 System.out.println("returnType:");
                 printNode(r.returnType, indent + 4);
             }
-
             printIndent(indent + 2);
             System.out.println("body:");
             if (r.body != null) printNode(r.body, indent + 4);
@@ -156,12 +141,10 @@ public class Main {
                 printIndent(indent + 4);
                 System.out.println("null");
             }
-
         } else if (node instanceof Parameter p) {
             printIndent(indent + 2);
             System.out.println(p.name + " :");
             printNode(p.type, indent + 4);
-
         } else if (node instanceof Assignment a) {
             printIndent(indent + 2);
             System.out.println("target:");
@@ -169,19 +152,16 @@ public class Main {
             printIndent(indent + 2);
             System.out.println("value:");
             printNode(a.value, indent + 4);
-
         } else if (node instanceof RoutineCall c) {
             printIndent(indent + 2);
             System.out.println("call " + c.routineName);
             for (Expression e : c.arguments)
                 printNode(e, indent + 4);
-
         } else if (node instanceof PrintStatement p) {
             printIndent(indent + 2);
             System.out.println("print:");
             for (Expression e : p.expressions)
                 printNode(e, indent + 4);
-
         } else if (node instanceof IfStatement i) {
             printIndent(indent + 2);
             System.out.println("if condition:");
@@ -194,7 +174,6 @@ public class Main {
                 System.out.println("else:");
                 printNode(i.elseBranch, indent + 4);
             }
-
         } else if (node instanceof WhileLoop w) {
             printIndent(indent + 2);
             System.out.println("while condition:");
@@ -202,7 +181,6 @@ public class Main {
             printIndent(indent + 2);
             System.out.println("body:");
             printNode(w.body, indent + 4);
-
         } else if (node instanceof ForLoop f) {
             printIndent(indent + 2);
             System.out.println("for " + f.loopVariable + (f.reverse ? " reverse" : "") + " in:");
@@ -210,7 +188,6 @@ public class Main {
             printIndent(indent + 2);
             System.out.println("body:");
             printNode(f.body, indent + 4);
-
         } else if (node instanceof Range r) {
             printIndent(indent + 2);
             System.out.println("start:");
@@ -218,63 +195,50 @@ public class Main {
             printIndent(indent + 2);
             System.out.println("end:");
             printNode(r.end, indent + 4);
-
         } else if (node instanceof BinaryExpression b) {
             printIndent(indent + 2);
             System.out.println("op = " + b.operator);
             printNode(b.left, indent + 4);
             printNode(b.right, indent + 4);
-
         } else if (node instanceof UnaryExpression u) {
             printIndent(indent + 2);
             System.out.println("op = " + u.operator);
             printNode(u.operand, indent + 4);
-
         } else if (node instanceof Identifier id) {
             printIndent(indent + 2);
             System.out.println("name = " + id.name);
-
         } else if (node instanceof IntegerLiteral i) {
             printIndent(indent + 2);
             System.out.println("int = " + i.value);
-
         } else if (node instanceof RealLiteral r) {
             printIndent(indent + 2);
             System.out.println("real = " + r.value);
-
         } else if (node instanceof BooleanLiteral b) {
             printIndent(indent + 2);
             System.out.println("bool = " + b.value);
-
         } else if (node instanceof StringLiteral s) {
             printIndent(indent + 2);
             System.out.println("string = \"" + s.value + "\"");
-
         } else if (node instanceof PrimitiveType t) {
             printIndent(indent + 2);
             System.out.println("primitive = " + t.typeName);
-
         } else if (node instanceof UserType t) {
             printIndent(indent + 2);
             System.out.println("userType = " + t.typeName);
-
         } else if (node instanceof ArrayType t) {
             printIndent(indent + 2);
             System.out.println("array of:");
             printNode(t.elementType, indent + 4);
-
         } else if (node instanceof RecordType r) {
             printIndent(indent + 2);
             System.out.println("record fields:");
             for (VariableDeclaration f : r.fields)
                 printNode(f, indent + 4);
-
         } else if (node instanceof FunctionCall f) {
             printIndent(indent + 2);
             System.out.println("functionName = " + f.functionName);
             for (Expression e : f.arguments)
                 printNode(e, indent + 4);
-
         } else if (node instanceof ModifiablePrimary m) {
             printIndent(indent + 2);
             System.out.println("base = " + m.baseName);
@@ -288,7 +252,6 @@ public class Main {
                     printNode(acc.index, indent + 6);
                 }
             }
-
         } else {
             printIndent(indent + 2);
             System.out.println("(unhandled node type)");

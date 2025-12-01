@@ -3,10 +3,8 @@ package analyzer;
 import ast.*;
 import java.util.*;
 
-/**
- * SemanticContext - manages symbol tables and analysis context.
- * Tracks declarations of variables, routines, types, and the current scope.
- */
+//  SemanticContext - manages symbol tables and analysis context.
+//  Tracks declarations of variables, routines, types, and the current scope.
 public class SemanticContext {
     
     // Information about a variable

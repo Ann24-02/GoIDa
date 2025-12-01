@@ -1,12 +1,7 @@
 package ast;
+import java.util.List;
 
-import java.util.List;     // для списков
-import parser.Token;       // для Token.Type
-
-
-/**
- * Корневой узел - вся программа
- */
+// Program - represents the entire program with a list of declarations
 public class Program extends ASTNode {
     public final List<Declaration> declarations;
     

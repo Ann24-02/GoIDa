@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// UserType - represents a user-defined type by its name
 public class UserType extends Type {
     public final String typeName;
 

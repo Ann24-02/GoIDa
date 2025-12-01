@@ -1,6 +1,6 @@
 package ast;
-import parser.Token;
 
+// BooleanLiteral - represents a boolean literal (true or false)
 public class BooleanLiteral extends Expression {
     public final boolean value;
 

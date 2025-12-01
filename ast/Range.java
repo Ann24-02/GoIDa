@@ -1,8 +1,6 @@
 package ast;
 
-/**
- * Диапазон для цикла for: 1..10
- */
+// Range - represents a range expression: start .. end
 public class Range extends ASTNode {
     public final Expression start;
     public final Expression end;
