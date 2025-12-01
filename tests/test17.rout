@@ -1,7 +1,0 @@
-if true then
-    if false then
-        print "Should not print";
-    else
-        print "Print this";
-    end;
-end;

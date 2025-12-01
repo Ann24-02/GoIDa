@@ -225,7 +225,7 @@ public class Parser {
         return new WhileLoop(cond, body, line, col);
     }
 
-    private Statement parseFor() {
+        private Statement parseFor() {
         int line = current.line, col = current.column;
         expect(Token.Type.FOR);
         String varName = current.lexeme;
@@ -250,9 +250,9 @@ public class Parser {
         if (isRange) {
             return new ForLoop(varName, new Range(firstExpr, secondExpr, line, col), reverse, body, line, col);
         } else {
-            // for-each loop: treat it as a "Range" with only one expression
-            // or a distinct ForEach node if you want later
-            return new RoutineCall("for_each(" + varName + " in expr)", List.of(firstExpr), line, col);
+            // Это for-each loop (for x in array)
+            // Используем Range, где end - это массив, а start = null
+            return new ForLoop(varName, new Range(null, firstExpr, line, col), reverse, body, line, col);
         }
     }
 

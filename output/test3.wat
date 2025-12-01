@@ -8,13 +8,21 @@
   (export "memory" (memory $memory))
 
   (func $main
-
-    (local $x i32)
-    i32.const 42
-    local.set $x
-    local.get $x
+    (local $a i32)
+    i32.const 10
+    local.set $a
+    local.get $a
+    i32.const 5
+i32.gt_s
+    if
+    i32.const 1
     call $printInt
     call $printNewline
+    else
+    i32.const 0
+    call $printInt
+    call $printNewline
+    end
   )
 
   (export "main" (func $main))
