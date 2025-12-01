@@ -15,8 +15,7 @@
     (local $temp i32)
     i32.const 0
     local.set $s
-    local.get $arr
-    i32.load
+    i32.const 0
     local.set $temp_size
     i32.const 1
     local.set $x_idx

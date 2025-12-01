@@ -17,6 +17,7 @@ This project implements a complete compiler pipeline from a custom imperative la
 .
 ├── analyzer/          # Semantic analysis and optimization
 ├── ast/               # Abstract Syntax Tree node definitions
+├── backup/            # AnalyzerTester and LexerTester
 ├── parser/            # Lexer and parser implementation
 ├── runtime/           # WebAssembly runtime and runner
 ├── tests/             # Test programs 
@@ -36,9 +37,29 @@ This script compiles all Java source files and places them in the `out/` directo
 
 ## Running Without codegen
 
-### Lexer + Parser + Analyzer
+### Lexer
 
-To run the complete parser (including lexer) with AST output:
+To run Lexer that performs tokenization for 1 test:
+
+```bash
+javac -d out backup/LexerTester.java
+java -cp out AnalyzerTester
+java -cp out LexerTester tests/test1.rout
+```
+
+### Analyzer
+
+To run Semantic Analyzer with optimizations for 1 test:
+
+```bash
+javac -d out backup/AnalyzerTester.java
+java -cp out AnalyzerTester
+java -cp out AnalyzerTester tests/test_optimization_simple.rout
+```
+
+### Lexer + Analyzer + Parser
+
+To run the complete parser with AST output:
 
 ```bash
 javac -d out parser/*.java ast/*.java
@@ -52,6 +73,13 @@ For `test1.rout` this performs:
 * Parsing
 * Semantic checking (type checking, scope analysis, etc.)
 * AST optimizations (constant folding, dead code elimination, etc.)
+
+
+Or to run all tests at once:
+
+```bash
+java -cp out parser.Main
+```
 
 ## Complete Compilation to WebAssembly
 
@@ -70,15 +98,6 @@ This generates:
 * `output/test1.wat` — WebAssembly Text format
 * `output/test1.wasm` — Binary WebAssembly module
 
-## Running All Tests
-
-To compile and run all test programs in the `tests/` directory:
-
-```bash
-./build.sh
-```
-
-This script compiles all `.rout` files and generates the corresponding `.wat` and `.wasm` files in the `output/` directory.
 
 ## Running Generated WebAssembly
 

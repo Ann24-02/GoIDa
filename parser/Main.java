@@ -36,9 +36,7 @@ public class Main {
     }
 
     private static void parseAndAnalyze(Path path) throws IOException {
-        System.out.println("\n" + "=".repeat(70));
-        System.out.println("== Parsing: " + path.getFileName() + " ===");
-        System.out.println("=".repeat(70));
+        System.out.println("== Parsing: " + path.getFileName() + " ==");
 
         String src = Files.readString(path);
         Lexer lexer = new Lexer(src);
