@@ -1,6 +1,6 @@
 
-# GoIDa Compiler Project
-A compiler for a simple imperative language that translates source code to WebAssembly (WASM).
+# Compilers Construction
+A compiler for an imperative language that translates source code to WebAssembly (WASM).
 
 ## Overview
 This project implements a complete compiler pipeline from a custom imperative language to WebAssembly. The compiler performs lexical analysis, parsing, semantic analysis, optimization, and finally generates WebAssembly binary code that can be executed in modern web browsers or standalone WASM runtimes.
