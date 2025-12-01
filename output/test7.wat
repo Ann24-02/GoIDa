@@ -27,8 +27,15 @@
     local.get $a1
     local.set $a2
     i32.const 99
-    local.set $a1
-    global.get $a2
+    local.get $a1
+    i32.const 2
+    i32.const 4
+    i32.mul
+    i32.add
+    i32.store
+    local.get $a2
+    i32.const 4
+    i32.add
     i32.const 2
     i32.const 4
     i32.mul

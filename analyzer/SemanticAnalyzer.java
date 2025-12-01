@@ -98,7 +98,12 @@ public class SemanticAnalyzer {
             // Parameters are visible inside the body
             for (Parameter p : r.parameters) {
                 try {
-                    context.declareVariable(p.name, p.type, p.line, p.column);
+                    // parameter names may be prefixed with "ref "; strip it for declaration
+                    String pname = p.name;
+                    if (pname.startsWith("ref ")) {
+                        pname = pname.substring(4);
+                    }
+                    context.declareVariable(pname, p.type, p.line, p.column);
                 } catch (SemanticException e) {
                     // If duplicate parameter names exist, collect and continue
                     errors.add(e);
@@ -294,24 +299,31 @@ public class SemanticAnalyzer {
     private void checkIfStatement(IfStatement ifs) {
         checkExpression(ifs.condition);
         if (ifs.thenBranch != null) {
+            context.enterScope();
             checkBody(ifs.thenBranch);
+            context.exitScope();
         }
         if (ifs.elseBranch != null) {
+            context.enterScope();
             checkBody(ifs.elseBranch);
+            context.exitScope();
         }
     }
 
     private void checkWhileLoop(WhileLoop wl) {
         checkExpression(wl.condition);
         context.enterLoop();
+        context.enterScope();
         if (wl.body != null) {
             checkBody(wl.body);
         }
+        context.exitScope();
         context.exitLoop();
     }
 
     private void checkForLoop(ForLoop fl) {
         context.enterLoop();
+        context.enterScope();
 
         // Range bounds are checked before the loop var exists
         if (fl.range != null) {
@@ -326,6 +338,7 @@ public class SemanticAnalyzer {
             checkBody(fl.body);
         }
 
+        context.exitScope();
         context.exitLoop();
     }
 

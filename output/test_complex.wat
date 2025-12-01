@@ -7,12 +7,12 @@
   (memory $memory 1)
   (export "memory" (memory $memory))
 
-  (global $x (mut i32) (i32.const 5))
-  (global $y (mut i32) (i32.const 10))
-
   ;; String literals
   (data (i32.const 0) "Result:\00")
   (data (i32.const 8) "Total:\00")
+
+  (global $x (mut i32) (i32.const 5))
+  (global $y (mut i32) (i32.const 10))
 
   (func $calculate (param $a i32) (param $b i32)
     (local $result i32)

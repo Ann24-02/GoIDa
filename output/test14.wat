@@ -7,12 +7,10 @@
   (memory $memory 1)
   (export "memory" (memory $memory))
 
-  (global $myData (mut i32) (i32.const 0))
-  (global $myData_size (mut i32) (i32.const 0))
-
   (func $printReverse (param $arr i32)
     (local $i i32)
-    global.get $arr_size
+    local.get $arr
+    i32.load
     local.set $i
     block $loop_0_end
     loop $loop_0_start
@@ -21,7 +19,9 @@
 i32.ge_s
     i32.eqz
     br_if $loop_0_end
-    global.get $arr
+    local.get $arr
+    i32.const 4
+    i32.add
     local.get $i
     i32.const 4
     i32.mul
@@ -39,6 +39,7 @@ i32.sub
   )
 
   (func $main
+    (local $myData i32)
     i32.const 256
     i32.const 4
     i32.store
@@ -55,8 +56,8 @@ i32.sub
     i32.const 40
     i32.store
     i32.const 256
-    global.set $myData
-    global.get $myData
+    local.set $myData
+    local.get $myData
     call $printReverse
   )
 

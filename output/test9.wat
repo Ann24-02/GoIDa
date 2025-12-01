@@ -16,7 +16,7 @@ i32.add
   (func $is_even (param $x i32) (result i32)
     local.get $x
     i32.const 2
-unknown.modulo
+    i32.rem_s
     i32.const 0
 i32.eq
   )

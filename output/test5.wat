@@ -11,8 +11,6 @@
     (local $arr i32)
     (local $sum i32)
     (local $x i32)
-    (local $x_idx i32)
-    (local $temp_size_0 i32)
     i32.const 256
     i32.const 5
     i32.store
@@ -35,19 +33,20 @@
     local.set $arr
     i32.const 0
     local.set $sum
-    ;; WARNING: array arr not declared globally
+    (local $x_idx i32)
+    (local $temp_size_1 i32)
     i32.const 0
-    local.set $temp_size_0
+    local.set $temp_size_1
     i32.const 0
     local.set $x_idx
     block $loop_0_end
     loop $loop_0_start
     local.get $x_idx
-    local.get $temp_size_0
+    local.get $temp_size_1
     i32.lt_s
     i32.eqz
     br_if $loop_0_end
-    i32.const 0
+    local.get $arr
     local.get $x_idx
     i32.const 4
     i32.mul

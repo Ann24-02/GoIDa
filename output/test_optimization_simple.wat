@@ -7,11 +7,6 @@
   (memory $memory 1)
   (export "memory" (memory $memory))
 
-  (global $a (mut i32) (i32.const 11))
-  (global $b (mut i32) (i32.const 36))
-  (global $c (mut i32) (i32.const 1))
-  (global $d (mut i32) (i32.const 8))
-
   ;; String literals
   (data (i32.const 0) "(should be 36)\00")
   (data (i32.const 15) "d =\00")
@@ -25,6 +20,11 @@
   (data (i32.const 146) "b =\00")
   (data (i32.const 150) "a =\00")
   (data (i32.const 154) "(should be 11)\00")
+
+  (global $a (mut i32) (i32.const 11))
+  (global $b (mut i32) (i32.const 36))
+  (global $c (mut i32) (i32.const 1))
+  (global $d (mut i32) (i32.const 8))
 
   (func $test_dead_code
     i32.const 65

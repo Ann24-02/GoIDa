@@ -43,9 +43,11 @@ public class SemanticContext {
     // Stack of scopes (for routines and blocks)
     private final Deque<Map<String, VarInfo>> scopes = new ArrayDeque<>();
     
-    // Global declarations (routines and types)
+    // Stack of type scopes to support shadowing of type names
+    private final Deque<Map<String, Type>> typeScopes = new ArrayDeque<>();
+
+    // Global declarations (routines)
     private final Map<String, RoutineInfo> routines = new HashMap<>();
-    private final Map<String, Type> types = new HashMap<>();
     
     // Current context
     private RoutineDeclaration currentRoutine = null;
@@ -54,16 +56,22 @@ public class SemanticContext {
     public SemanticContext() {
         // Global scope
         scopes.push(new HashMap<>());
+        // Global type scope
+        typeScopes.push(new HashMap<>());
     }
     
     // Scope management
     public void enterScope() {
         scopes.push(new HashMap<>());
+        typeScopes.push(new HashMap<>());
     }
     
     public void exitScope() {
         if (scopes.size() > 1) {
             scopes.pop();
+        }
+        if (typeScopes.size() > 1) {
+            typeScopes.pop();
         }
     }
     
@@ -162,21 +170,28 @@ public class SemanticContext {
     
     // Type declarations
     public void declareType(String name, Type type, int line, int column) {
-        if (types.containsKey(name)) {
+        Map<String, Type> current = typeScopes.peek();
+        if (current.containsKey(name)) {
             throw new SemanticException(
                 "Type '" + name + "' is already declared",
                 line, column
             );
         }
-        types.put(name, type);
+        current.put(name, type);
     }
     
     public boolean isDeclaredType(String name) {
-        return types.containsKey(name);
+        for (Map<String, Type> scope : typeScopes) {
+            if (scope.containsKey(name)) return true;
+        }
+        return false;
     }
     
     public Type getType(String name) {
-        return types.get(name);
+        for (Map<String, Type> scope : typeScopes) {
+            if (scope.containsKey(name)) return scope.get(name);
+        }
+        return null;
     }
     
     // Collect unused variables in the current scope

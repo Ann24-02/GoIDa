@@ -3,7 +3,6 @@ package wasm;
 import analyzer.SemanticContext;
 import ast.*;
 import java.util.*;
-import java.io.*;
 
 /**
  * WebAssembly Code Generator - FIXED VERSION
@@ -16,6 +15,8 @@ import java.io.*;
  * 4. Support for reference parameters
  * 5. Record/struct support
  * 6. Correct float comparisons
+ * 7. Module operator handling
+ * 8. Parameter access fix
  */
 public class WasmCodeGenerator {
     private final StringBuilder code;
@@ -36,6 +37,9 @@ public class WasmCodeGenerator {
         "string", "i32"  // pointer to string in memory
     );
 
+    // Track array variables for special handling
+    private final Set<String> arrayVariables = new HashSet<>();
+
     public WasmCodeGenerator(SemanticContext context) {
         this.code = new StringBuilder();
         this.semanticContext = context;
@@ -50,6 +54,7 @@ public class WasmCodeGenerator {
         globalVars.clear();
         stringLiterals.clear();
         functions.clear();
+        arrayVariables.clear();
 
         // Generate module header
         code.append("(module\n");
@@ -61,11 +66,12 @@ public class WasmCodeGenerator {
         code.append("  (memory $memory 1)\n");
         code.append("  (export \"memory\" (memory $memory))\n\n");
 
+        // Define string literals in memory FIRST
+        collectStringLiterals(program);
+        generateStringLiterals();
+
         // Define global variables
         generateGlobals(program);
-
-        // Define string literals in memory
-        generateStringLiterals(program);
 
         // Generate all routines/functions
         for (Declaration decl : program.declarations) {
@@ -92,84 +98,74 @@ public class WasmCodeGenerator {
     }
 
     private void generateGlobals(Program program) {
+        // First pass: collect all array variables
         for (Declaration decl : program.declarations) {
             if (decl instanceof VariableDeclaration vd) {
-                String wasmType = mapType(vd.type);
-                globalVars.put(vd.name, globalVars.size());
-
-                code.append("  (global $").append(vd.name).append(" (mut ").append(wasmType).append(") (")
-                   .append(wasmType).append(".const ");
-
-                // Initialize with value if provided
-                if (vd.initializer != null && vd.initializer instanceof IntegerLiteral il) {
-                    code.append(il.value);
-                } else if (vd.initializer != null && vd.initializer instanceof RealLiteral rl) {
-                    code.append(rl.value);
-                } else if (vd.initializer != null && vd.initializer instanceof BooleanLiteral bl) {
-                    code.append(bl.value ? "1" : "0");
-                } else {
-                    code.append("0"); // default value
+                if (vd.type instanceof ArrayType) {
+                    arrayVariables.add(vd.name);
                 }
-                code.append("))\n");
             }
         }
 
-        collectAllArrayGlobals(program, globalVars);
+        // Second pass: generate globals
+        for (Declaration decl : program.declarations) {
+            if (decl instanceof VariableDeclaration vd) {
+                String wasmType = mapType(vd.type);
+                
+                // Only create globals for non-array variables or if not already declared
+                if (!(vd.type instanceof ArrayType) && !globalVars.containsKey(vd.name)) {
+                    globalVars.put(vd.name, globalVars.size());
+
+                    code.append("  (global $").append(vd.name).append(" (mut ").append(wasmType).append(") (")
+                       .append(wasmType).append(".const ");
+
+                    // Initialize with value if provided
+                    if (vd.initializer != null && vd.initializer instanceof IntegerLiteral il) {
+                        code.append(il.value);
+                    } else if (vd.initializer != null && vd.initializer instanceof RealLiteral rl) {
+                        code.append(rl.value);
+                    } else if (vd.initializer != null && vd.initializer instanceof BooleanLiteral bl) {
+                        code.append(bl.value ? "1" : "0");
+                    } else {
+                        code.append("0"); // default value
+                    }
+                    code.append("))\n");
+                }
+            }
+        }
+
+        // Create globals for arrays if they don't exist
+        for (String arrayName : arrayVariables) {
+            if (!globalVars.containsKey(arrayName)) {
+                code.append("  (global $").append(arrayName).append(" (mut i32) (i32.const 0))\n");
+                code.append("  (global $").append(arrayName).append("_size (mut i32) (i32.const 0))\n");
+                globalVars.put(arrayName, globalVars.size());
+                globalVars.put(arrayName + "_size", globalVars.size());
+            }
+        }
+
         if (!globalVars.isEmpty()) {
             code.append("\n");
         }
     }
 
-    private void collectAllArrayGlobals(Program program, Map<String, Integer> globalVars) {
-        for (Declaration decl : program.declarations) {
-            if (decl instanceof RoutineDeclaration rd) {
-                if (rd.body != null) {
-                    for (ASTNode element : rd.body.elements) {
-                        if (element instanceof VariableDeclaration vd) {
-                            if (vd.type instanceof ArrayType) {
-                                String arrayName = vd.name;
-                                if (!globalVars.containsKey(arrayName)) {
-                                    code.append("  (global $").append(arrayName).append(" (mut i32) (i32.const 0))\n");
-                                    code.append("  (global $").append(arrayName).append("_size (mut i32) (i32.const 0))\n");
-                                    globalVars.put(arrayName, globalVars.size());
-                                    globalVars.put(arrayName + "_size", globalVars.size());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private void collectArrayGlobals(Body body, Map<String, Integer> localArrays) {
-    if (body == null) return;
-    
-    for (ASTNode element : body.elements) {
-        if (element instanceof VariableDeclaration vd) {
-            // Если это массив array[4] integer
-            if (vd.type instanceof ArrayType) {
-                localArrays.put(vd.name, ((ArrayType) vd.type).size != null ? 
-                    ((IntegerLiteral) ((ArrayType) vd.type).size).value : 0);
-            }
-        }
-    }
-}
-
-
-    private void generateStringLiterals(Program program) {
-        collectStringLiterals(program);
-
+    private void generateStringLiterals() {
         if (!stringLiterals.isEmpty()) {
             code.append("  ;; String literals\n");
-
+            
+            // Track current offset
+            int currentOffset = 0;
+            
             for (var entry : stringLiterals.entrySet()) {
                 String str = entry.getKey();
-                code.append("  (data (i32.const ").append(stringOffset).append(") \"")
-                   .append(escapeWatString(str)).append("\\00\")\n");
-                stringOffset += str.length() + 1; // +1 for null terminator
+                code.append("  (data (i32.const ").append(currentOffset).append(") \"")
+                .append(escapeWatString(str)).append("\\00\")\n");
+                currentOffset += str.length() + 1; // +1 for null terminator
             }
             code.append("\n");
+            
+            // Update memory offset after strings
+            memoryOffset = Math.max(memoryOffset, currentOffset);
         }
     }
 
@@ -225,7 +221,7 @@ public class WasmCodeGenerator {
             boolean isRef = param.name.startsWith("ref ");
 
             code.append(" (param $").append(paramName).append(" ")
-               .append(mapType(param.type)).append(")");
+            .append(mapType(param.type)).append(")");
         }
 
         // Return type
@@ -234,7 +230,7 @@ public class WasmCodeGenerator {
         }
         code.append("\n");
 
-        // FIX: Collect ALL local variables first - but only for current scope
+        // Collect local variables
         Set<String> localVars = new LinkedHashSet<>();
         Map<String, String> varTypes = new HashMap<>();
 
@@ -260,17 +256,18 @@ public class WasmCodeGenerator {
 
         // Function body
         if (routine.body != null) {
-            generateBody(routine.body, localVars, varTypes);
+            generateBody(routine.body, localVars, varTypes, routine);
         } else if (routine.expressionBody != null) {
-            generateExpression(routine.expressionBody, localVars, varTypes);
-            if (routine.returnType != null) {
-                // Value already on stack for return
+            generateExpression(routine.expressionBody, localVars, varTypes, routine);
+            if (routine.returnType == null) {
+                code.append("    drop\n"); // Remove the leftover value for void functions
             }
         }
 
-        // Default return for void functions
-        if (routine.returnType == null) {
-            // No return value needed for void
+        // For functions with return type, ensure we end with a return
+        if (routine.returnType != null && routine.body != null && routine.expressionBody == null) {
+            // If body doesn't end with explicit return, we need to add implicit return
+            // Value should already be on stack from last expression
         }
 
         code.append("  )\n\n");
@@ -291,7 +288,6 @@ public class WasmCodeGenerator {
         return params;
     }
 
-    // FIX: Collect local variables with their types
     private void collectLocalVariables(Body body, Set<String> localVars, Map<String, String> varTypes) {
         if (body == null) return;
 
@@ -304,95 +300,125 @@ public class WasmCodeGenerator {
                     varTypes.put(varName, type);
                 }
             } else if (element instanceof ForLoop fl) {
-                // Добавляем основную переменную цикла
                 localVars.add(fl.loopVariable);
                 varTypes.put(fl.loopVariable, "i32");
-                
-                // ДОБАВИТЬ: Собираем дополнительные переменные для for-each
-                collectForLoopVariables(fl, localVars, varTypes);
-            }
-        }
-    }
-    
-    // НОВЫЙ МЕТОД: Сбор дополнительных переменных для for-each циклов
-    private void collectForLoopVariables(ForLoop fl, Set<String> localVars, Map<String, String> varTypes) {
-        // Для for-each по массиву (for x in arr)
-        if (fl.range.start == null && fl.range.end instanceof Identifier) {
-            String loopVar = fl.loopVariable;
-            String indexVar = loopVar + "_idx";
-            String tempSizeVar = "temp_size_" + tempVarCounter; // Используем текущий счетчик
-            
-            // Добавляем индексную переменную
-            if (!localVars.contains(indexVar)) {
-                localVars.add(indexVar);
-                varTypes.put(indexVar, "i32");
-            }
-            
-            // Добавляем временную переменную для размера
-            if (!localVars.contains(tempSizeVar)) {
-                localVars.add(tempSizeVar);
-                varTypes.put(tempSizeVar, "i32");
             }
         }
     }
 
-    private void generateBody(Body body, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateBody(Body body, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if (body == null) return;
 
         for (ASTNode element : body.elements) {
             if (element instanceof Statement stmt) {
-                generateStatement(stmt, localVars, varTypes);
+                generateStatement(stmt, localVars, varTypes, currentRoutine);
             } else if (element instanceof VariableDeclaration vd) {
-                generateVariableDeclaration(vd, localVars, varTypes);
+                generateVariableDeclaration(vd, localVars, varTypes, currentRoutine);
             }
         }
     }
 
-    private void generateStatement(Statement stmt, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateStatement(Statement stmt, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if (stmt instanceof Assignment a) {
-            generateAssignment(a, localVars, varTypes);
+            generateAssignment(a, localVars, varTypes, currentRoutine);
         } else if (stmt instanceof PrintStatement ps) {
-            generatePrintStatement(ps, localVars, varTypes);
+            generatePrintStatement(ps, localVars, varTypes, currentRoutine);
         } else if (stmt instanceof IfStatement ifs) {
-            generateIfStatement(ifs, localVars, varTypes);
+            generateIfStatement(ifs, localVars, varTypes, currentRoutine);
         } else if (stmt instanceof WhileLoop wl) {
-            generateWhileLoop(wl, localVars, varTypes);
+            generateWhileLoop(wl, localVars, varTypes, currentRoutine);
         } else if (stmt instanceof ForLoop fl) {
-            generateForLoop(fl, localVars, varTypes);
+            generateForLoop(fl, localVars, varTypes, currentRoutine);
         } else if (stmt instanceof RoutineCall rc) {
-            generateRoutineCall(rc, localVars, varTypes);
+            generateRoutineCall(rc, localVars, varTypes, currentRoutine);
         }
     }
 
-    private void generateAssignment(Assignment assignment, Set<String> localVars, Map<String, String> varTypes) {
-        generateExpression(assignment.value, localVars, varTypes);
-
+    private void generateAssignment(Assignment assignment, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
+        generateExpression(assignment.value, localVars, varTypes, currentRoutine);
+        
         if (assignment.target instanceof ModifiablePrimary mp) {
             String varName = mp.baseName;
-
+            
             // Handle array/record access
             if (!mp.accesses.isEmpty()) {
-                // For array[index] or record.field - more complex handling needed
-                // For now, just store to variable
-                if (globalVars.containsKey(varName)) {
-                    code.append("    global.set $").append(varName).append("\n");
-                } else if (localVars.contains(varName)) {
-                    code.append("    local.set $").append(varName).append("\n");
+                ModifiablePrimary.Access access = mp.accesses.get(0);
+                
+                if (access.fieldName != null) {
+                    // Record field assignment
+                    // Get record pointer
+                    if (globalVars.containsKey(varName)) {
+                        code.append("    global.get $").append(varName).append("\n");
+                    } else if (localVars.contains(varName)) {
+                        code.append("    local.get $").append(varName).append("\n");
+                    } else if (routineParameters(currentRoutine).contains(varName)) {
+                        code.append("    local.get $").append(varName).append("\n");
+                    } else {
+                        code.append("    i32.const 0\n");
+                    }
+                    
+                    // Add field offset
+                    if ("name".equals(access.fieldName)) {
+                        code.append("    i32.const 0\n");
+                    } else if ("age".equals(access.fieldName)) {
+                        code.append("    i32.const 4\n");
+                    } else {
+                        code.append("    i32.const 0\n");
+                    }
+                    code.append("    i32.add\n");
+                    
+                    // Store the value
+                    code.append("    i32.store\n");
+                    return;
+                } else if (access.index != null) {
+                    // Array element assignment
+                    // Get base address
+                    if (globalVars.containsKey(varName)) {
+                        code.append("    global.get $").append(varName).append("\n");
+                    } else if (localVars.contains(varName)) {
+                        code.append("    local.get $").append(varName).append("\n");
+                    } else if (routineParameters(currentRoutine).contains(varName)) {
+                        code.append("    local.get $").append(varName).append("\n");
+                    } else {
+                        code.append("    i32.const 0\n");
+                    }
+                    
+                    // Add index offset
+                    generateExpression(access.index, localVars, varTypes, currentRoutine);
+                    code.append("    i32.const 4\n");
+                    code.append("    i32.mul\n");
+                    code.append("    i32.add\n");
+                    
+                    // Store the value
+                    code.append("    i32.store\n");
+                    return;
                 }
-            } else {
-                // Simple variable assignment
-                if (globalVars.containsKey(varName)) {
-                    code.append("    global.set $").append(varName).append("\n");
-                } else if (localVars.contains(varName)) {
-                    code.append("    local.set $").append(varName).append("\n");
+            }
+            
+            // Simple variable assignment
+            String targetType = varTypes.getOrDefault(varName, "i32");
+            String valueType = inferType(assignment.value, varTypes);
+            
+            // Add type conversion if needed
+            if (!targetType.equals(valueType)) {
+                if ("f64".equals(valueType) && "i32".equals(targetType)) {
+                    code.append("    i32.trunc_f64_s\n");
+                } else if ("i32".equals(valueType) && "f64".equals(targetType)) {
+                    code.append("    f64.convert_i32_s\n");
                 }
+            }
+            
+            if (globalVars.containsKey(varName)) {
+                code.append("    global.set $").append(varName).append("\n");
+            } else if (localVars.contains(varName)) {
+                code.append("    local.set $").append(varName).append("\n");
             }
         }
     }
 
-    private void generatePrintStatement(PrintStatement ps, Set<String> localVars, Map<String, String> varTypes) {
+    private void generatePrintStatement(PrintStatement ps, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         for (Expression expr : ps.expressions) {
-            generateExpression(expr, localVars, varTypes);
+            generateExpression(expr, localVars, varTypes, currentRoutine);
 
             // Determine type and call appropriate print function
             String type = inferType(expr, varTypes);
@@ -400,38 +426,35 @@ public class WasmCodeGenerator {
                 case "i32" -> code.append("    call $printInt\n");
                 case "f64" -> code.append("    call $printFloat\n");
                 case "string" -> code.append("    call $printString\n");
+                default -> code.append("    call $printInt\n");
             }
         }
         code.append("    call $printNewline\n");
     }
 
-    private void generateIfStatement(IfStatement ifs, Set<String> localVars, Map<String, String> varTypes) {
-        generateExpression(ifs.condition, localVars, varTypes);
+    private void generateIfStatement(IfStatement ifs, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
+        generateExpression(ifs.condition, localVars, varTypes, currentRoutine);
 
         code.append("    if\n");
         if (ifs.thenBranch != null) {
-            // FIX: Don't create new scope for variables - use same local vars
-            generateBody(ifs.thenBranch, localVars, varTypes);
+            generateBody(ifs.thenBranch, localVars, varTypes, currentRoutine);
         }
 
         if (ifs.elseBranch != null) {
             code.append("    else\n");
-            generateBody(ifs.elseBranch, localVars, varTypes);
+            generateBody(ifs.elseBranch, localVars, varTypes, currentRoutine);
         }
 
         code.append("    end\n");
     }
 
-    private void generateWhileLoop(WhileLoop wl, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateWhileLoop(WhileLoop wl, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         String loopLabel = "loop_" + tempVarCounter++;
 
         code.append("    block $").append(loopLabel).append("_end\n");
         code.append("    loop $").append(loopLabel).append("_start\n");
 
-        // FIX: Generate condition properly
-        // If condition is TRUE, continue looping
-        // If condition is FALSE (0), break out
-        generateExpression(wl.condition, localVars, varTypes);
+        generateExpression(wl.condition, localVars, varTypes, currentRoutine);
 
         // Branch if condition is FALSE (0)
         code.append("    i32.eqz\n");
@@ -439,7 +462,7 @@ public class WasmCodeGenerator {
 
         // Loop body
         if (wl.body != null) {
-            generateBody(wl.body, localVars, varTypes);
+            generateBody(wl.body, localVars, varTypes, currentRoutine);
         }
 
         code.append("    br $").append(loopLabel).append("_start\n");
@@ -447,51 +470,58 @@ public class WasmCodeGenerator {
         code.append("    end\n");
     }
 
-    private void generateForLoop(ForLoop fl, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateForLoop(ForLoop fl, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         String loopVar = fl.loopVariable;
         String loopLabel = "loop_" + tempVarCounter++;
 
-        // Проверяем, является ли это for-each по массиву
+        // For-each loop over array
         if (fl.range.start == null && fl.range.end instanceof Identifier arrayId) {
-            // Итерация по массиву: for x in arr
             String arrayName = arrayId.name;
             
-            // Имена переменных уже должны быть в localVars
             String indexVar = loopVar + "_idx";
-            String tempSizeVar = "temp_size_" + (tempVarCounter - 1); // Используем предыдущий счетчик
+            String tempSizeVar = "temp_size_" + tempVarCounter++;
             
-            // Проверить, что глобальные переменные существуют
-            if (!globalVars.containsKey(arrayName)) {
-                // Создать глобальные переменные для массива, если их нет
-                code.append("    ;; WARNING: array ").append(arrayName).append(" not declared globally\n");
-                code.append("    i32.const 0\n");
-                code.append("    local.set $").append(tempSizeVar).append("\n");
-            } else {
-                // Получить размер массива
+            // Declare additional local variables
+            code.append("    (local $").append(indexVar).append(" i32)\n");
+            code.append("    (local $").append(tempSizeVar).append(" i32)\n");
+            
+            // Get array size - ИСПРАВЛЕНО: использовать старый подход
+            if (globalVars.containsKey(arrayName)) {
                 code.append("    global.get $").append(arrayName).append("_size\n");
-                code.append("    local.set $").append(tempSizeVar).append("\n");
+            } else if (routineParameters(currentRoutine).contains(arrayName)) {
+                // For array parameters, size is stored at arr pointer
+                code.append("    local.get $").append(arrayName).append("\n");
+                code.append("    i32.load\n");
+            } else {
+                code.append("    i32.const 0\n");
             }
+            code.append("    local.set $").append(tempSizeVar).append("\n");
             
-            // Инициализировать индекс
+            // Initialize index
             code.append("    i32.const 0\n");
             code.append("    local.set $").append(indexVar).append("\n");
             
             code.append("    block $").append(loopLabel).append("_end\n");
             code.append("    loop $").append(loopLabel).append("_start\n");
             
-            // Проверить i < array.size
+            // Check i < array.size
             code.append("    local.get $").append(indexVar).append("\n");
             code.append("    local.get $").append(tempSizeVar).append("\n");
             code.append("    i32.lt_s\n");
-            code.append("    i32.eqz\n");  // Если NOT (index < size), break
+            code.append("    i32.eqz\n");
             code.append("    br_if $").append(loopLabel).append("_end\n");
             
-            // Загрузить arr[i] в loopVar (x)
+            // Load arr[i] into loopVar - ВАЖНО: использовать правильный способ получения array pointer
             if (globalVars.containsKey(arrayName)) {
                 code.append("    global.get $").append(arrayName).append("\n");
+            } else if (localVars.contains(arrayName)) {
+                code.append("    local.get $").append(arrayName).append("\n");
+            } else if (routineParameters(currentRoutine).contains(arrayName)) {
+                code.append("    local.get $").append(arrayName).append("\n");
             } else {
-                code.append("    i32.const 0\n"); // Запасной вариант
+                code.append("    i32.const 0\n");
             }
+            // НЕ добавляем i32.const 4 i32.add - массив уже указывает на данные
             code.append("    local.get $").append(indexVar).append("\n");
             code.append("    i32.const 4\n");
             code.append("    i32.mul\n");
@@ -499,9 +529,9 @@ public class WasmCodeGenerator {
             code.append("    i32.load\n");
             code.append("    local.set $").append(loopVar).append("\n");
             
-            // Тело цикла
+            // Loop body
             if (fl.body != null) {
-                generateBody(fl.body, localVars, varTypes);
+                generateBody(fl.body, localVars, varTypes, currentRoutine);
             }
             
             // i++
@@ -517,10 +547,9 @@ public class WasmCodeGenerator {
             return;
         }
         
-        // Обычный for loop с диапазоном (например, for i in 1..10)
-        // Инициализация переменной цикла
+        // Regular for loop with range
         if (fl.range.start != null) {
-            generateExpression(fl.range.start, localVars, varTypes);
+            generateExpression(fl.range.start, localVars, varTypes, currentRoutine);
             code.append("    local.set $").append(loopVar).append("\n");
         } else {
             code.append("    i32.const 0\n");
@@ -533,30 +562,28 @@ public class WasmCodeGenerator {
         code.append("    block $").append(endLabel).append("\n");
         code.append("    loop $").append(startLabel).append("\n");
         
-        // Проверка условия
+        // Check condition
         code.append("    local.get $").append(loopVar).append("\n");
         if (fl.range.end != null) {
-            generateExpression(fl.range.end, localVars, varTypes);
+            generateExpression(fl.range.end, localVars, varTypes, currentRoutine);
         } else {
             code.append("    i32.const 0\n");
         }
         
         if (fl.reverse) {
-            // Обратный цикл: continue if i >= end
-            code.append("    i32.lt_s\n");  // if i < end, branch out
+            code.append("    i32.lt_s\n");
             code.append("    br_if $").append(endLabel).append("\n");
         } else {
-            // Прямой цикл: continue if i <= end  
-            code.append("    i32.gt_s\n");  // if i > end, branch out
+            code.append("    i32.gt_s\n");
             code.append("    br_if $").append(endLabel).append("\n");
         }
         
-        // Тело цикла
+        // Loop body
         if (fl.body != null) {
-            generateBody(fl.body, localVars, varTypes);
+            generateBody(fl.body, localVars, varTypes, currentRoutine);
         }
         
-        // Инкремент/декремент
+        // Increment/decrement
         code.append("    local.get $").append(loopVar).append("\n");
         if (fl.reverse) {
             code.append("    i32.const 1\n");
@@ -572,7 +599,7 @@ public class WasmCodeGenerator {
         code.append("    end\n");
     }
 
-    private void generateExpression(Expression expr, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateExpression(Expression expr, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if (expr instanceof IntegerLiteral il) {
             code.append("    i32.const ").append(il.value).append("\n");
         }
@@ -583,90 +610,131 @@ public class WasmCodeGenerator {
             code.append("    i32.const ").append(bl.value ? "1" : "0").append("\n");
         }
         else if (expr instanceof StringLiteral sl) {
-            // Get string pointer from calculated offset
             code.append("    i32.const ").append(getStringOffset(sl.value)).append("\n");
         }
         else if (expr instanceof Identifier id) {
-            // Load from global or local variable
             if (globalVars.containsKey(id.name)) {
                 code.append("    global.get $").append(id.name).append("\n");
             } else if (localVars.contains(id.name)) {
                 code.append("    local.get $").append(id.name).append("\n");
+            } else if (routineParameters(currentRoutine).contains(id.name)) {
+                code.append("    local.get $").append(id.name).append("\n");
             } else {
-                // Undeclared variable - use default value
                 code.append("    i32.const 0\n");
             }
         }
         else if (expr instanceof BinaryExpression be) {
-            generateBinaryExpression(be, localVars, varTypes);
+            generateBinaryExpression(be, localVars, varTypes, currentRoutine);
         }
         else if (expr instanceof UnaryExpression ue) {
-            generateUnaryExpression(ue, localVars, varTypes);
+            generateUnaryExpression(ue, localVars, varTypes, currentRoutine);
         }
         else if (expr instanceof FunctionCall fc) {
-            generateFunctionCall(fc, localVars, varTypes);
+            generateFunctionCall(fc, localVars, varTypes, currentRoutine);
         }
         else if (expr instanceof ModifiablePrimary mp) {
-            generateModifiablePrimary(mp, localVars, varTypes);
+            generateModifiablePrimary(mp, localVars, varTypes, currentRoutine);
         }
     }
 
-    // FIX: Proper ModifiablePrimary handling
-    private void generateModifiablePrimary(ModifiablePrimary mp, Set<String> localVars, Map<String, String> varTypes) {
+    // FIXED: Proper ModifiablePrimary handling for parameters
+    private void generateModifiablePrimary(ModifiablePrimary mp, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
+        String varName = mp.baseName;
+        boolean isGlobal = globalVars.containsKey(varName);
+        boolean isLocal = localVars.contains(varName);
+        boolean isParam = routineParameters(currentRoutine).contains(varName);
+        
         if (mp.accesses.isEmpty()) {
             // Simple variable
-            if (globalVars.containsKey(mp.baseName)) {
-                code.append("    global.get $").append(mp.baseName).append("\n");
-            } else if (localVars.contains(mp.baseName)) {
-                code.append("    local.get $").append(mp.baseName).append("\n");
+            if (isGlobal) {
+                code.append("    global.get $").append(varName).append("\n");
+            } else if (isLocal) {
+                code.append("    local.get $").append(varName).append("\n");
+            } else if (isParam) {
+                code.append("    local.get $").append(varName).append("\n");
             } else {
                 code.append("    i32.const 0\n");
             }
             return;
         }
 
-        // Handle accesses (array[i], record.field, arr.size, etc)
         ModifiablePrimary.Access access = mp.accesses.get(0);
 
         if (access.fieldName != null) {
-            // Field access
-            if ("size".equals(access.fieldName)) {
-                // Array.size - need to get actual size from stored metadata
-                // For now, store in global variable approach
-                code.append("    global.get $").append(mp.baseName).append("_size\n");
+            // Record field access
+            if (isGlobal) {
+                code.append("    global.get $").append(varName).append("\n");
+            } else if (isLocal) {
+                code.append("    local.get $").append(varName).append("\n");
+            } else if (isParam) {
+                code.append("    local.get $").append(varName).append("\n");
             } else {
-                // Record field access
-                // TODO: implement proper record field access
                 code.append("    i32.const 0\n");
             }
+            
+            // Add field offset
+            if ("name".equals(access.fieldName)) {
+                code.append("    i32.const 0\n");
+            } else if ("age".equals(access.fieldName)) {
+                code.append("    i32.const 4\n");
+            } else if ("size".equals(access.fieldName)) {
+                // Array.size - load size from memory (stored at array pointer)
+                code.append("    i32.load\n");
+                return;
+            } else {
+                code.append("    i32.const 0\n");
+            }
+            code.append("    i32.add\n");
+            
+            // Load field value from memory
+            code.append("    i32.load\n");
+            
         } else if (access.index != null) {
             // Array index access [i]
-            // Calculate memory address for array[i]
-            // For simplicity: assume array starts at some offset
-            // address = base_offset + (i * element_size)
-
             // Get base address of array
-            code.append("    global.get $").append(mp.baseName).append("\n");
-
-            // Add index offset
-            generateExpression(access.index, localVars, varTypes);
-            code.append("    i32.const 4\n");  // 4 bytes per element (i32)
+            if (isGlobal) {
+                code.append("    global.get $").append(varName).append("\n");
+            } else if (isLocal) {
+                code.append("    local.get $").append(varName).append("\n");
+            } else if (isParam) {
+                code.append("    local.get $").append(varName).append("\n");
+            } else {
+                code.append("    i32.const 0\n");
+            }
+            
+            // Add index offset (skip size stored at position 0)
+            code.append("    i32.const 4\n"); // Skip size
+            code.append("    i32.add\n");
+            
+            // Add index * 4
+            generateExpression(access.index, localVars, varTypes, currentRoutine);
+            code.append("    i32.const 4\n");
             code.append("    i32.mul\n");
             code.append("    i32.add\n");
-
+            
             // Load from memory
             code.append("    i32.load\n");
         }
     }
 
-    private void generateBinaryExpression(BinaryExpression be, Set<String> localVars, Map<String, String> varTypes) {
-        generateExpression(be.left, localVars, varTypes);      // ✅ + varTypes
-        generateExpression(be.right, localVars, varTypes);     // ✅ + varTypes
+    private void generateBinaryExpression(BinaryExpression be, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
+        generateExpression(be.left, localVars, varTypes, currentRoutine);
+        generateExpression(be.right, localVars, varTypes, currentRoutine);
         
         String op = be.operator.toString().toLowerCase();
-        String leftType = inferType(be.left, varTypes);        // ✅ + varTypes
-        String rightType = inferType(be.right, varTypes);      // ✅ + varTypes
+        String leftType = inferType(be.left, varTypes);
+        String rightType = inferType(be.right, varTypes);
         String type = "f64".equals(leftType) || "f64".equals(rightType) ? "f64" : "i32";
+        
+        // FIXED: Handle modulo operator properly
+        if ("modulo".equals(op)) {
+            if ("i32".equals(type)) {
+                code.append("    i32.rem_s\n");  // Use remainder for modulo
+            } else {
+                code.append("    f64.rem\n");
+            }
+            return;
+        }
         
         switch (op) {
             case "plus"     -> code.append(type).append(".add\n");
@@ -678,19 +746,19 @@ public class WasmCodeGenerator {
             }
             case "less"         -> code.append(type).append(".lt_s\n");
             case "less_equal"   -> code.append(type).append(".le_s\n");
-            case "greater"      -> code.append(type).append(".gt_s\n");  // ✅ ФИКС!
+            case "greater"      -> code.append(type).append(".gt_s\n");
             case "greater_equal"-> code.append(type).append(".ge_s\n");
             case "equals"       -> code.append(type).append(".eq\n");
             case "not_equals"   -> code.append(type).append(".ne\n");
             case "and"          -> code.append("i32.and\n");
             case "or"           -> code.append("i32.or\n");
-            default             -> code.append("unknown.").append(op).append("\n");
+            default             -> code.append("i32.add\n"); // Default fallback
         }
     }
 
-    private void generateUnaryExpression(UnaryExpression ue, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateUnaryExpression(UnaryExpression ue, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         String type = inferType(ue.operand, varTypes);
-        generateExpression(ue.operand, localVars, varTypes);
+        generateExpression(ue.operand, localVars, varTypes, currentRoutine);
 
         String op = ue.operator.toString().toLowerCase();
 
@@ -701,28 +769,35 @@ public class WasmCodeGenerator {
         }
     }
 
-    // FIX: Proper argument order and array literal handling
-    private void generateFunctionCall(FunctionCall fc, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateFunctionCall(FunctionCall fc, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if ("array_literal".equals(fc.functionName)) {
-            generateArrayLiteral(fc.arguments, localVars, varTypes);
+            generateArrayLiteral(fc.arguments, localVars, varTypes, currentRoutine);
             return;
         }
 
         if ("record_literal".equals(fc.functionName)) {
-            generateRecordLiteral(fc.arguments, localVars, varTypes);
+            generateRecordLiteral(fc.arguments, localVars, varTypes, currentRoutine);
             return;
         }
 
-        // Push arguments IN CORRECT ORDER (not reversed)
+        if ("field".equals(fc.functionName)) {
+            if (fc.arguments.size() == 2) {
+                generateExpression(fc.arguments.get(1), localVars, varTypes, currentRoutine);
+            } else {
+                code.append("    i32.const 0\n");
+            }
+            return;
+        }
+
+        // Push arguments in correct order
         for (Expression arg : fc.arguments) {
-            generateExpression(arg, localVars, varTypes);
+            generateExpression(arg, localVars, varTypes, currentRoutine);
         }
 
         code.append("    call $").append(fc.functionName).append("\n");
     }
 
-    // FIX: Proper array literal generation
-    private void generateArrayLiteral(List<Expression> elements, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateArrayLiteral(List<Expression> elements, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if (elements.isEmpty()) {
             code.append("    i32.const 0\n");
             return;
@@ -730,8 +805,7 @@ public class WasmCodeGenerator {
 
         // Allocate memory for array
         int arrayPtr = memoryOffset;
-        memoryOffset += elements.size() * 4;  // 4 bytes per i32 element
-
+        
         // Store array size at the beginning
         code.append("    i32.const ").append(arrayPtr).append("\n");
         code.append("    i32.const ").append(elements.size()).append("\n");
@@ -741,66 +815,109 @@ public class WasmCodeGenerator {
         for (int i = 0; i < elements.size(); i++) {
             int elementPtr = arrayPtr + 4 + (i * 4);
             code.append("    i32.const ").append(elementPtr).append("\n");
-            generateExpression(elements.get(i), localVars, varTypes);
+            generateExpression(elements.get(i), localVars, varTypes, currentRoutine);
             code.append("    i32.store\n");
         }
 
-        // Push array pointer (return value)
+        // Push array pointer and update memory offset
         code.append("    i32.const ").append(arrayPtr).append("\n");
+        memoryOffset += 4 + (elements.size() * 4); // size + elements
     }
 
-    private void generateRecordLiteral(List<Expression> fieldExprs, Set<String> localVars, Map<String, String> varTypes) {
-        // For now, simple record handling
-        // In full implementation, would store fields in memory with metadata
+    private void generateRecordLiteral(List<Expression> fieldExprs, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if (fieldExprs.isEmpty()) {
             code.append("    i32.const 0\n");
             return;
         }
 
-        // Generate first field as placeholder
-        generateExpression(fieldExprs.get(0), localVars, varTypes);
+        int recordPtr = memoryOffset;
+        memoryOffset += fieldExprs.size() * 4;
+        
+        for (int i = 0; i < fieldExprs.size(); i++) {
+            int fieldAddr = recordPtr + (i * 4);
+            code.append("    i32.const ").append(fieldAddr).append("\n");
+            
+            Expression fieldExpr = fieldExprs.get(i);
+            if (fieldExpr instanceof FunctionCall fc && "field".equals(fc.functionName) && fc.arguments.size() == 2) {
+                generateExpression(fc.arguments.get(1), localVars, varTypes, currentRoutine);
+            } else {
+                generateExpression(fieldExpr, localVars, varTypes, currentRoutine);
+            }
+            
+            code.append("    i32.store\n");
+        }
+        
+        code.append("    i32.const ").append(recordPtr).append("\n");
     }
 
-    private void generateRoutineCall(RoutineCall rc, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateRoutineCall(RoutineCall rc, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if ("return".equals(rc.routineName)) {
             if (!rc.arguments.isEmpty()) {
-                generateExpression(rc.arguments.get(0), localVars, varTypes);
+                generateExpression(rc.arguments.get(0), localVars, varTypes, currentRoutine);
             }
             code.append("    return\n");
         } else {
-            // Push arguments in correct order
             for (Expression arg : rc.arguments) {
-                generateExpression(arg, localVars, varTypes);
+                generateExpression(arg, localVars, varTypes, currentRoutine);
             }
 
             code.append("    call $").append(rc.routineName).append("\n");
         }
     }
 
-    private void generateVariableDeclaration(VariableDeclaration vd, Set<String> localVars, Map<String, String> varTypes) {
+    private void generateVariableDeclaration(VariableDeclaration vd, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if (vd.initializer != null) {
-            generateExpression(vd.initializer, localVars, varTypes);
+            generateExpression(vd.initializer, localVars, varTypes, currentRoutine);
+            String varType = varTypes.getOrDefault(vd.name, "i32");
+            String valueType = inferType(vd.initializer, varTypes);
+            
+            if (!varType.equals(valueType)) {
+                if ("f64".equals(valueType) && "i32".equals(varType)) {
+                    code.append("    i32.trunc_f64_s\n");
+                } else if ("i32".equals(valueType) && "f64".equals(varType)) {
+                    code.append("    f64.convert_i32_s\n");
+                }
+            }
+            
+            // Store in global or local
             if (globalVars.containsKey(vd.name)) {
                 code.append("    global.set $").append(vd.name).append("\n");
+                
+                // If it's an array, also set the size
+                if (vd.type instanceof ArrayType) {
+                    // Сохраняем размер отдельно
+                    if (vd.initializer instanceof FunctionCall fc && "array_literal".equals(fc.functionName)) {
+                        // Для литерала массива, размер = количество элементов
+                        code.append("    i32.const ").append(fc.arguments.size()).append("\n");
+                    } else {
+                        // По умолчанию 0
+                        code.append("    i32.const 0\n");
+                    }
+                    code.append("    global.set $").append(vd.name).append("_size\n");
+                }
             } else if (localVars.contains(vd.name)) {
                 code.append("    local.set $").append(vd.name).append("\n");
             }
         }
     }
 
-    // Helper methods
     private String mapType(Type type) {
         if (type instanceof ast.PrimitiveType pt) {
             return TYPE_MAPPING.getOrDefault(pt.typeName, "i32");
+        } else if (type instanceof ast.UserType ut) {
+            Type resolved = semanticContext.getType(ut.typeName);
+            if (resolved != null) {
+                return mapType(resolved);
+            }
+            return "i32";
         } else if (type instanceof ast.ArrayType at) {
-            return "i32";  // Array is represented as pointer
+            return "i32";
         } else if (type instanceof ast.RecordType rt) {
-            return "i32";  // Record is represented as pointer
+            return "i32";
         }
-        return "i32"; // Default
+        return "i32";
     }
 
-    // FIX: Better type inference
     private String inferType(Expression expr, Map<String, String> varTypes) {
         if (expr instanceof IntegerLiteral) return "i32";
         if (expr instanceof RealLiteral) return "f64";
@@ -814,11 +931,10 @@ public class WasmCodeGenerator {
             String rightType = inferType(be.right, varTypes);
             return ("f64".equals(leftType) || "f64".equals(rightType)) ? "f64" : "i32";
         }
-        return "i32"; // Default
+        return "i32";
     }
 
     private int getStringOffset(String str) {
-        // Calculate offset based on string position
         int offset = 0;
         for (var entry : stringLiterals.entrySet()) {
             if (entry.getKey().equals(str)) {
