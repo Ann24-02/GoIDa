@@ -5,5 +5,5 @@ routine main() is
     var y : integer is 3
     var z : integer
     z := x * y + 2
-    print z
+    print zz
 end

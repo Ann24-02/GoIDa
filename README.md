@@ -81,6 +81,14 @@ Or to run all tests at once:
 java -cp out parser.Main
 ```
 
+### Golden Tests
+
+```bash
+javac -encoding UTF-8 -d out backup/GoldenTester.java
+java -cp out GoldenTester --update tests/
+
+```
+
 ## Complete Compilation to WebAssembly
 
 To compile a source file to WebAssembly:
