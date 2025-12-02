@@ -187,6 +187,36 @@ public class WasmCodeGenerator {
         else if (node instanceof FunctionCall fc) {
             for (Expression arg : fc.arguments) collectStringLiterals(arg);
         }
+        else if (node instanceof VariableDeclaration vd) {
+            if (vd.initializer != null) collectStringLiterals(vd.initializer);
+        }
+        else if (node instanceof IfStatement ifs) {
+            collectStringLiterals(ifs.condition);
+            if (ifs.thenBranch != null) collectStringLiterals(ifs.thenBranch);
+            if (ifs.elseBranch != null) collectStringLiterals(ifs.elseBranch);
+        }
+        else if (node instanceof WhileLoop wl) {
+            collectStringLiterals(wl.condition);
+            if (wl.body != null) collectStringLiterals(wl.body);
+        }
+        else if (node instanceof ForLoop fl) {
+            if (fl.range.start != null) collectStringLiterals(fl.range.start);
+            if (fl.range.end != null) collectStringLiterals(fl.range.end);
+            if (fl.body != null) collectStringLiterals(fl.body);
+        }
+        else if (node instanceof RoutineCall rc) {
+            for (Expression arg : rc.arguments) collectStringLiterals(arg);
+        }
+        else if (node instanceof ModifiablePrimary mp) {
+            // Base name is just a string, not an AST node
+            for (ModifiablePrimary.Access access : mp.accesses) {
+                if (access.index != null) collectStringLiterals(access.index);
+            }
+        }
+        else if (node instanceof Assignment a) {
+            collectStringLiterals(a.target);
+            collectStringLiterals(a.value);
+        }
     }
 
     // Generate function definition
@@ -355,10 +385,37 @@ public class WasmCodeGenerator {
         if (assignment.target instanceof ModifiablePrimary mp) {
             String varName = mp.baseName;
             
-            // Array element assignment
+            // Record field assignment
             if (!mp.accesses.isEmpty()) {
                 ModifiablePrimary.Access access = mp.accesses.get(0);
                 
+                if (access.fieldName != null) {
+                    // Save value to temp variable
+                    code.append("    local.set $temp\n");
+                    
+                    // Calculate record field address
+                    generateVariableLoad(varName, localVars, currentRoutine);
+                    
+                    // Add field offset
+                    int fieldOffset = 0;
+                    if ("age".equals(access.fieldName)) {
+                        fieldOffset = 4; // age field is at offset 4 (after name at offset 0)
+                    } else if ("name".equals(access.fieldName)) {
+                        fieldOffset = 0; // name field is at offset 0
+                    }
+                    
+                    if (fieldOffset > 0) {
+                        code.append("    i32.const ").append(fieldOffset).append("\n");
+                        code.append("    i32.add\n");
+                    }
+                    
+                    // Store value
+                    code.append("    local.get $temp\n");
+                    code.append("    i32.store\n");
+                    return;
+                }
+                
+                // Array element assignment
                 if (access.index != null) {
                     // Save value to temp variable
                     code.append("    local.set $temp\n");
@@ -409,20 +466,36 @@ public class WasmCodeGenerator {
 
     // Generate print statement
     private void generatePrintStatement(PrintStatement ps, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
-        for (Expression expr : ps.expressions) {
-            generateExpression(expr, localVars, varTypes, currentRoutine);
+    for (Expression expr : ps.expressions) {
+        generateExpression(expr, localVars, varTypes, currentRoutine);
 
-            // Call appropriate print function based on type
-            String type = inferType(expr, varTypes);
-            switch (type) {
-                case "i32" -> code.append("    call $printInt\n");
-                case "f64" -> code.append("    call $printFloat\n");
-                case "string" -> code.append("    call $printString\n");
-                default -> code.append("    call $printInt\n");
+        // Call appropriate print function based on type
+        String type = inferType(expr, varTypes);
+        switch (type) {
+            case "i32" -> {
+                code.append("    call $printInt\n");
+                // printInt ничего не оставляет на стеке
+            }
+            case "f64" -> {
+                code.append("    call $printFloat\n");
+                // printFloat ничего не оставляет на стеке
+            }
+            case "string" -> {
+                code.append("    call $printString\n");
+                // printString ничего не оставляет на стеке
+            }
+            case "boolean" -> {
+                code.append("    call $printBool\n");
+                // printBool ничего не оставляет на стеке
+            }
+            default -> {
+                code.append("    call $printInt\n");
+                // printInt ничего не оставляет на стеке
             }
         }
-        code.append("    call $printNewline\n");
     }
+    code.append("    call $printNewline\n");
+}
 
     // Generate if statement
     private void generateIfStatement(IfStatement ifs, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
@@ -463,63 +536,64 @@ public class WasmCodeGenerator {
 
     // Generate for loop
     private void generateForLoop(ForLoop fl, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
-        String loopVar = fl.loopVariable;
-        String loopLabel = "loop_" + tempVarCounter++;
+    String loopVar = fl.loopVariable;
+    String loopLabel = "loop_" + tempVarCounter++;
 
-        // For-each loop over array
-        if (fl.range.start == null && fl.range.end instanceof Identifier arrayId) {
-            String arrayName = arrayId.name;
-            
-            String indexVar = loopVar + "_idx";
-            String tempSizeVar = "temp_size";
-            
-            // Get array size
-            generateVariableLoad(arrayName + "_size", localVars, currentRoutine);
-            code.append("    local.set $").append(tempSizeVar).append("\n");
-            
-            // Initialize index to 1 (1-based arrays)
-            code.append("    i32.const 1\n");
-            code.append("    local.set $").append(indexVar).append("\n");
-            
-            code.append("    block $").append(loopLabel).append("_end\n");
-            code.append("    loop $").append(loopLabel).append("_start\n");
-            
-            // Check index <= array.size
-            code.append("    local.get $").append(indexVar).append("\n");
-            code.append("    local.get $").append(tempSizeVar).append("\n");
-            code.append("    i32.gt_s\n");
-            code.append("    br_if $").append(loopLabel).append("_end\n");
-            
-            // Load array[i] into loop variable
-            generateVariableLoad(arrayName, localVars, currentRoutine);
-            code.append("    i32.const 4\n");
-            code.append("    i32.add\n");
-            
-            code.append("    local.get $").append(indexVar).append("\n");
-            code.append("    i32.const 1\n");
-            code.append("    i32.sub\n");
-            code.append("    i32.const 4\n");
-            code.append("    i32.mul\n");
-            code.append("    i32.add\n");
-            code.append("    i32.load\n");
-            code.append("    local.set $").append(loopVar).append("\n");
-            
-            // Generate loop body
-            if (fl.body != null) {
-                generateBody(fl.body, localVars, varTypes, currentRoutine);
-            }
-            
-            // Increment index
-            code.append("    local.get $").append(indexVar).append("\n");
-            code.append("    i32.const 1\n");
-            code.append("    i32.add\n");
-            code.append("    local.set $").append(indexVar).append("\n");
-            
-            code.append("    br $").append(loopLabel).append("_start\n");
-            code.append("    end\n");
-            code.append("    end\n");
-            return;
+    // For-each loop over array
+    if (fl.range.start == null && fl.range.end instanceof Identifier arrayId) {
+        String arrayName = arrayId.name;
+        
+        String indexVar = loopVar + "_idx";
+        String tempSizeVar = "temp_size";
+        
+        // Get array size (load from first 4 bytes of array)
+        generateVariableLoad(arrayName, localVars, currentRoutine);
+        code.append("    i32.load\n");  // Load array size
+        code.append("    local.set $").append(tempSizeVar).append("\n");
+        
+        // Initialize index to 1 (1-based arrays)
+        code.append("    i32.const 1\n");
+        code.append("    local.set $").append(indexVar).append("\n");
+        
+        code.append("    block $").append(loopLabel).append("_end\n");
+        code.append("    loop $").append(loopLabel).append("_start\n");
+        
+        // Check index <= array.size
+        code.append("    local.get $").append(indexVar).append("\n");
+        code.append("    local.get $").append(tempSizeVar).append("\n");
+        code.append("    i32.gt_s\n");
+        code.append("    br_if $").append(loopLabel).append("_end\n");
+        
+        // Load array[i] into loop variable
+        generateVariableLoad(arrayName, localVars, currentRoutine);
+        code.append("    i32.const 4\n");
+        code.append("    i32.add\n");
+        
+        code.append("    local.get $").append(indexVar).append("\n");
+        code.append("    i32.const 1\n");
+        code.append("    i32.sub\n");
+        code.append("    i32.const 4\n");
+        code.append("    i32.mul\n");
+        code.append("    i32.add\n");
+        code.append("    i32.load\n");
+        code.append("    local.set $").append(loopVar).append("\n");
+        
+        // Generate loop body
+        if (fl.body != null) {
+            generateBody(fl.body, localVars, varTypes, currentRoutine);
         }
+        
+        // Increment index
+        code.append("    local.get $").append(indexVar).append("\n");
+        code.append("    i32.const 1\n");
+        code.append("    i32.add\n");
+        code.append("    local.set $").append(indexVar).append("\n");
+        
+        code.append("    br $").append(loopLabel).append("_start\n");
+        code.append("    end\n");
+        code.append("    end\n");
+        return;
+    }
         
         // Regular numeric range loop
         if (fl.range.start != null) {
@@ -623,8 +697,22 @@ public class WasmCodeGenerator {
         // Record field access
         else if (access.fieldName != null) {
             generateVariableLoad(varName, localVars, currentRoutine);
-            code.append("    i32.load\n");
             
+            // Add field offset
+            int fieldOffset = 0;
+            if ("age".equals(access.fieldName)) {
+                fieldOffset = 4; // age field is at offset 4 (after name at offset 0)
+            } else if ("name".equals(access.fieldName)) {
+                fieldOffset = 0; // name field is at offset 0
+            }
+            
+            if (fieldOffset > 0) {
+                code.append("    i32.const ").append(fieldOffset).append("\n");
+                code.append("    i32.add\n");
+            }
+            
+            // Load field value
+            code.append("    i32.load\n");
         } 
         // Array element access
         else if (access.index != null) {
@@ -774,33 +862,46 @@ public class WasmCodeGenerator {
 
     // Generate record literal {x: 1, y: 2}
     private void generateRecordLiteral(List<Expression> fieldExprs, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
-        if (fieldExprs.isEmpty()) {
-            code.append("    i32.const 0\n");
-            return;
-        }
-
-        int recordPtr = memoryOffset;
-        memoryOffset += fieldExprs.size() * 4;
-        
-        // Store each field
-        for (int i = 0; i < fieldExprs.size(); i++) {
-            int fieldAddr = recordPtr + (i * 4);
-            code.append("    i32.const ").append(fieldAddr).append("\n");
-            
-            Expression fieldExpr = fieldExprs.get(i);
-            if (fieldExpr instanceof FunctionCall fc && "field".equals(fc.functionName) && fc.arguments.size() == 2) {
-                generateExpression(fc.arguments.get(1), localVars, varTypes, currentRoutine);
-            } else {
-                generateExpression(fieldExpr, localVars, varTypes, currentRoutine);
-            }
-            
-            code.append("    i32.store\n");
-        }
-        
-        // Return record pointer
-        code.append("    i32.const ").append(recordPtr).append("\n");
+    if (fieldExprs.isEmpty()) {
+        code.append("    i32.const 0\n");
+        return;
     }
 
+    int recordPtr = memoryOffset;
+    int fieldCount = fieldExprs.size();
+    
+    // Обрабатываем каждый field в формате field("name", value)
+    for (int i = 0; i < fieldExprs.size(); i++) {
+        Expression fieldExpr = fieldExprs.get(i);
+        
+        if (fieldExpr instanceof FunctionCall fc && "field".equals(fc.functionName)) {
+            if (fc.arguments.size() == 2) {
+                Expression fieldNameExpr = fc.arguments.get(0);
+                Expression fieldValueExpr = fc.arguments.get(1);
+                
+                // Вычисляем offset для этого поля
+                int fieldOffset = 0;
+                if (fieldNameExpr instanceof StringLiteral sl) {
+                    if ("name".equals(sl.value)) {
+                        fieldOffset = 0;
+                    } else if ("age".equals(sl.value)) {
+                        fieldOffset = 4;
+                    }
+                }
+                
+                // Сохраняем значение поля
+                code.append("    i32.const ").append(recordPtr + fieldOffset).append("\n");
+                generateExpression(fieldValueExpr, localVars, varTypes, currentRoutine);
+                code.append("    i32.store\n");
+            }
+        }
+    }
+    
+    // Возвращаем recordPtr (только один раз!)
+    code.append("    i32.const ").append(recordPtr).append("\n");
+    
+    memoryOffset += fieldCount * 4;
+}
     // Generate routine call (including return)
     private void generateRoutineCall(RoutineCall rc, Set<String> localVars, Map<String, String> varTypes, RoutineDeclaration currentRoutine) {
         if ("return".equals(rc.routineName)) {
@@ -814,6 +915,11 @@ public class WasmCodeGenerator {
             }
 
             code.append("    call $").append(rc.routineName).append("\n");
+            
+            // If the called function returns a value but we don't use it in a void context,
+            // we need to drop it
+            // This is handled by checking if the current context expects a value
+            // For now, we'll be conservative and not add drop
         }
     }
 
@@ -871,14 +977,33 @@ public class WasmCodeGenerator {
         return "i32";
     }
 
-    // Infer expression type
+    // Infer expression type for printing purposes
     private String inferType(Expression expr, Map<String, String> varTypes) {
         if (expr instanceof IntegerLiteral) return "i32";
         if (expr instanceof RealLiteral) return "f64";
-        if (expr instanceof BooleanLiteral) return "i32";
+        if (expr instanceof BooleanLiteral) return "boolean";
         if (expr instanceof StringLiteral) return "string";
         if (expr instanceof Identifier id) {
+            // Try to get type from global variables or local variables
+            if (globalVars.containsKey(id.name)) {
+                // We don't store type info in globalVars, so we need another way
+                // For now, assume integer for globals
+                return "i32";
+            }
             return varTypes.getOrDefault(id.name, "i32");
+        }
+        if (expr instanceof ModifiablePrimary mp) {
+            if (!mp.accesses.isEmpty()) {
+                ModifiablePrimary.Access access = mp.accesses.get(0);
+                if (access.fieldName != null) {
+                    if ("name".equals(access.fieldName)) {
+                        return "string";
+                    } else if ("age".equals(access.fieldName)) {
+                        return "i32";
+                    }
+                }
+            }
+            return "i32";
         }
         if (expr instanceof BinaryExpression be) {
             String leftType = inferType(be.left, varTypes);

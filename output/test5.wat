@@ -36,7 +36,8 @@
     local.set $arr
     i32.const 0
     local.set $sum
-    i32.const 0
+    local.get $arr
+    i32.load
     local.set $temp_size
     i32.const 1
     local.set $x_idx

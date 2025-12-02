@@ -8,8 +8,11 @@
   (export "memory" (memory $memory))
 
   ;; String literals
-  (data (i32.const 0) "Result:\00")
-  (data (i32.const 8) "Total:\00")
+  (data (i32.const 0) "Positive\00")
+  (data (i32.const 9) "Non-positive\00")
+  (data (i32.const 22) "Loop iteration:\00")
+  (data (i32.const 38) "Result:\00")
+  (data (i32.const 46) "Total:\00")
 
   (global $x (mut i32) (i32.const 5))
   (global $y (mut i32) (i32.const 10))
@@ -21,7 +24,7 @@
     local.get $b
 i32.add
     local.set $result
-    i32.const 0
+    i32.const 38
     call $printString
     local.get $result
     call $printInt
@@ -39,7 +42,7 @@ i32.add
     global.get $y
 i32.add
     local.set $total
-    i32.const 8
+    i32.const 46
     call $printString
     local.get $total
     call $printInt
@@ -52,7 +55,7 @@ i32.gt_s
     call $printString
     call $printNewline
     else
-    i32.const 0
+    i32.const 9
     call $printString
     call $printNewline
     end
@@ -64,7 +67,7 @@ i32.gt_s
     i32.const 5
     i32.gt_s
     br_if $loop_0_end
-    i32.const 0
+    i32.const 22
     call $printString
     local.get $i
     call $printInt
